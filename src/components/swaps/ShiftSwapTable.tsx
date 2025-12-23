@@ -1,4 +1,4 @@
-import { Check, X, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { Check, X, ArrowRight, MoreHorizontal, Clock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ShiftSwapRequest } from '@/types/hr';
-import { mockEmployees, mockShifts } from '@/data/mockData';
+import { mockEmployees, mockShifts, calculateShiftHours } from '@/data/mockData';
+import { cn } from '@/lib/utils';
 
 interface ShiftSwapTableProps {
   requests: ShiftSwapRequest[];
@@ -39,6 +41,20 @@ export function ShiftSwapTable({
   const getShift = (shiftId: string) =>
     mockShifts.find((s) => s.id === shiftId);
 
+  const getHoursDifference = (fromShiftId: string, toShiftId?: string) => {
+    const fromShift = getShift(fromShiftId);
+    const toShift = toShiftId ? getShift(toShiftId) : null;
+    
+    if (!fromShift) return null;
+    
+    const fromHours = calculateShiftHours(fromShift.startTime, fromShift.endTime);
+    
+    if (!toShift) return { fromHours, toHours: 0, diff: -fromHours };
+    
+    const toHours = calculateShiftHours(toShift.startTime, toShift.endTime);
+    return { fromHours, toHours, diff: toHours - fromHours };
+  };
+
   return (
     <div className="table-container">
       <Table>
@@ -49,6 +65,7 @@ export function ShiftSwapTable({
             <TableHead className="w-[50px]"></TableHead>
             <TableHead className="font-semibold">Cible</TableHead>
             <TableHead className="font-semibold">Shift proposé</TableHead>
+            <TableHead className="font-semibold">Compensation</TableHead>
             <TableHead className="font-semibold">Statut</TableHead>
             {showActions && <TableHead className="w-[100px]"></TableHead>}
           </TableRow>
@@ -57,7 +74,7 @@ export function ShiftSwapTable({
           {requests.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={showActions ? 7 : 6}
+                colSpan={showActions ? 8 : 7}
                 className="h-32 text-center text-muted-foreground"
               >
                 Aucune demande d'échange trouvée
@@ -141,6 +158,41 @@ export function ShiftSwapTable({
                         Remplacement simple
                       </span>
                     )}
+                  </TableCell>
+                  {/* Hours Difference */}
+                  <TableCell>
+                    {(() => {
+                      const hoursDiff = getHoursDifference(request.fromShiftId, request.toShiftId);
+                      if (!hoursDiff) return null;
+                      
+                      const { fromHours, toHours, diff } = hoursDiff;
+                      const isEqual = Math.abs(diff) < 0.1;
+                      const isPositive = diff > 0;
+                      
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={isEqual ? 'secondary' : 'outline'}
+                            className={cn(
+                              'text-xs',
+                              !isEqual && (isPositive ? 'border-success text-success' : 'border-warning text-warning')
+                            )}
+                          >
+                            <Clock className="w-3 h-3 mr-1" />
+                            {isEqual ? (
+                              `${fromHours}h = ${toHours}h`
+                            ) : (
+                              <>
+                                {diff > 0 ? '+' : ''}{diff.toFixed(1)}h
+                              </>
+                            )}
+                          </Badge>
+                          {!isEqual && Math.abs(diff) > 2 && (
+                            <AlertTriangle className="w-4 h-4 text-warning" />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={request.status} />

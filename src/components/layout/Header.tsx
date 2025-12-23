@@ -1,4 +1,4 @@
-import { Bell, Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +19,28 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const { currentCompany, setCurrentCompany, companies, sidebarOpen } = useApp();
+  const {
+    currentCompany,
+    setCurrentCompany,
+    companies,
+    sidebarOpen,
+    currentUser,
+    notifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useApp();
+
+  // Filter notifications for current user and company
+  const userNotifications = notifications
+    .filter(
+      (n) =>
+        n.userId === currentUser?.id && n.companyId === currentCompany?.id
+    )
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  // Only show notifications to managers and admins
+  const showNotifications =
+    currentUser?.role === 'admin' || currentUser?.role === 'manager';
 
   return (
     <header
@@ -79,10 +101,13 @@ export function Header({ title, subtitle }: HeaderProps) {
           </DropdownMenu>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
+          {showNotifications && (
+            <NotificationDropdown
+              notifications={userNotifications}
+              onMarkAsRead={markNotificationAsRead}
+              onMarkAllAsRead={markAllNotificationsAsRead}
+            />
+          )}
         </div>
       </div>
     </header>

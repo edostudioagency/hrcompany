@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet } from 'lucide-react';
+import { Download, FileSpreadsheet, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -16,7 +18,8 @@ import { Company } from '@/types/hr';
 interface ExportFormProps {
   companies: Company[];
   currentCompany: Company | null;
-  onExport: (companyId: string, month: number, year: number) => void;
+  onExport: (companyId: string, month: number, year: number, sendToAccountant?: boolean) => void;
+  onUpdateAccountantEmail?: (companyId: string, email: string) => void;
 }
 
 const MONTHS = [
@@ -34,7 +37,7 @@ const MONTHS = [
   'Décembre',
 ];
 
-export function ExportForm({ companies, currentCompany, onExport }: ExportFormProps) {
+export function ExportForm({ companies, currentCompany, onExport, onUpdateAccountantEmail }: ExportFormProps) {
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -45,8 +48,30 @@ export function ExportForm({ companies, currentCompany, onExport }: ExportFormPr
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString());
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sendToAccountant, setSendToAccountant] = useState(true);
+  const [accountantEmail, setAccountantEmail] = useState(
+    currentCompany?.accountantEmail || ''
+  );
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  const selectedCompanyData = companies.find((c) => c.id === selectedCompany);
+
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompany(companyId);
+    const company = companies.find((c) => c.id === companyId);
+    setAccountantEmail(company?.accountantEmail || '');
+  };
+
+  const handleSaveAccountantEmail = () => {
+    if (selectedCompany && onUpdateAccountantEmail) {
+      onUpdateAccountantEmail(selectedCompany, accountantEmail);
+      toast({
+        title: 'Email enregistré',
+        description: `L'email du comptable a été mis à jour.`,
+      });
+    }
+  };
 
   const handleGenerate = async () => {
     if (!selectedCompany) {
@@ -54,6 +79,15 @@ export function ExportForm({ companies, currentCompany, onExport }: ExportFormPr
         variant: 'destructive',
         title: 'Erreur',
         description: 'Veuillez sélectionner une entreprise.',
+      });
+      return;
+    }
+
+    if (sendToAccountant && !accountantEmail) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: 'Veuillez renseigner l\'email du comptable.',
       });
       return;
     }
@@ -66,12 +100,15 @@ export function ExportForm({ companies, currentCompany, onExport }: ExportFormPr
     onExport(
       selectedCompany,
       parseInt(selectedMonth),
-      parseInt(selectedYear)
+      parseInt(selectedYear),
+      sendToAccountant
     );
 
     toast({
       title: 'Export généré',
-      description: `L'export pour ${MONTHS[parseInt(selectedMonth) - 1]} ${selectedYear} a été créé.`,
+      description: sendToAccountant && accountantEmail
+        ? `L'export pour ${MONTHS[parseInt(selectedMonth) - 1]} ${selectedYear} a été créé et envoyé à ${accountantEmail}.`
+        : `L'export pour ${MONTHS[parseInt(selectedMonth) - 1]} ${selectedYear} a été créé.`,
     });
 
     setIsGenerating(false);
@@ -85,11 +122,11 @@ export function ExportForm({ companies, currentCompany, onExport }: ExportFormPr
           Générer un export comptable
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Entreprise</Label>
-            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+            <Select value={selectedCompany} onValueChange={handleCompanyChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner..." />
               </SelectTrigger>
@@ -133,6 +170,46 @@ export function ExportForm({ companies, currentCompany, onExport }: ExportFormPr
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        {/* Accountant Email Section */}
+        <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-primary" />
+            <Label className="font-medium">Email du comptable</Label>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="comptable@entreprise.fr"
+              value={accountantEmail}
+              onChange={(e) => setAccountantEmail(e.target.value)}
+              className="flex-1"
+            />
+            {onUpdateAccountantEmail && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveAccountantEmail}
+                disabled={!selectedCompany}
+              >
+                Enregistrer
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="sendToAccountant"
+              checked={sendToAccountant}
+              onCheckedChange={(checked) => setSendToAccountant(checked === true)}
+            />
+            <label
+              htmlFor="sendToAccountant"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
+              Envoyer automatiquement l'export au comptable
+            </label>
           </div>
         </div>
 

@@ -13,6 +13,7 @@ import TimeOff from "./pages/TimeOff";
 import Swaps from "./pages/Swaps";
 import Exports from "./pages/Exports";
 import Companies from "./pages/Companies";
+import Teams from "./pages/Teams";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/companies" element={<Companies />} />
+            <Route path="/teams" element={<Teams />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/shifts" element={<Shifts />} />
             <Route path="/time-off" element={<TimeOff />} />

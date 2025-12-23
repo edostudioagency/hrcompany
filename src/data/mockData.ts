@@ -6,6 +6,7 @@ import {
   TimeOffRequest,
   ShiftSwapRequest,
   DashboardStats,
+  Notification,
 } from '@/types/hr';
 
 // Mock Companies
@@ -15,6 +16,7 @@ export const mockCompanies: Company[] = [
     name: 'TechCorp',
     legalName: 'TechCorp SAS',
     siret: '123 456 789 00012',
+    accountantEmail: 'compta@techcorp.fr',
     defaultWorkSchedule: {
       workDays: [1, 2, 3, 4, 5],
       startTime: '09:00',
@@ -27,6 +29,7 @@ export const mockCompanies: Company[] = [
     name: 'RetailPlus',
     legalName: 'RetailPlus SARL',
     siret: '987 654 321 00098',
+    accountantEmail: 'comptabilite@retailplus.fr',
     defaultWorkSchedule: {
       workDays: [1, 2, 3, 4, 5, 6],
       startTime: '08:00',
@@ -38,11 +41,11 @@ export const mockCompanies: Company[] = [
 
 // Mock Teams
 export const mockTeams: Team[] = [
-  { id: '1', companyId: '1', name: 'Développement', createdAt: new Date('2024-01-01') },
-  { id: '2', companyId: '1', name: 'Marketing', createdAt: new Date('2024-01-01') },
-  { id: '3', companyId: '1', name: 'Support Client', createdAt: new Date('2024-01-01') },
-  { id: '4', companyId: '2', name: 'Vente', createdAt: new Date('2024-02-15') },
-  { id: '5', companyId: '2', name: 'Logistique', createdAt: new Date('2024-02-15') },
+  { id: '1', companyId: '1', name: 'Développement', primaryApproverId: '2', backupApproverId: '1', createdAt: new Date('2024-01-01') },
+  { id: '2', companyId: '1', name: 'Marketing', primaryApproverId: '2', createdAt: new Date('2024-01-01') },
+  { id: '3', companyId: '1', name: 'Support Client', primaryApproverId: '1', createdAt: new Date('2024-01-01') },
+  { id: '4', companyId: '2', name: 'Vente', primaryApproverId: '6', createdAt: new Date('2024-02-15') },
+  { id: '5', companyId: '2', name: 'Logistique', primaryApproverId: '6', createdAt: new Date('2024-02-15') },
 ];
 
 // Mock Employees
@@ -338,4 +341,68 @@ export const getShiftSwapsWithRelations = (companyId: string): ShiftSwapRequest[
       requester: mockEmployees.find(e => e.id === s.requesterId),
       targetEmployee: mockEmployees.find(e => e.id === s.targetEmployeeId),
     }));
+};
+
+// Mock Notifications
+export const mockNotifications: Notification[] = [
+  {
+    id: '1',
+    companyId: '1',
+    userId: '1',
+    type: 'time_off_request',
+    title: 'Nouvelle demande de congé',
+    message: 'Sophie Bernard a demandé un congé payé du 30 décembre au 4 janvier.',
+    read: false,
+    relatedId: '1',
+    createdAt: new Date(Date.now() - 1800000), // 30 min ago
+  },
+  {
+    id: '2',
+    companyId: '1',
+    userId: '1',
+    type: 'shift_swap_request',
+    title: 'Demande d\'échange de shift',
+    message: 'Sophie Bernard souhaite échanger son shift avec Lucas Petit.',
+    read: false,
+    relatedId: '1',
+    createdAt: new Date(Date.now() - 3600000), // 1 hour ago
+  },
+  {
+    id: '3',
+    companyId: '1',
+    userId: '2',
+    type: 'time_off_request',
+    title: 'Nouvelle demande de congé',
+    message: 'Sophie Bernard a demandé un congé payé.',
+    read: true,
+    relatedId: '1',
+    createdAt: new Date(Date.now() - 86400000), // 1 day ago
+  },
+];
+
+// Helper to get notifications for a user
+export const getNotificationsForUser = (userId: string, companyId: string): Notification[] => {
+  return mockNotifications
+    .filter(n => n.userId === userId && n.companyId === companyId)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+};
+
+// Helper to get teams with approvers
+export const getTeamsWithApprovers = (companyId: string) => {
+  return mockTeams
+    .filter(t => t.companyId === companyId)
+    .map(t => ({
+      ...t,
+      primaryApprover: t.primaryApproverId ? mockEmployees.find(e => e.id === t.primaryApproverId) : undefined,
+      backupApprover: t.backupApproverId ? mockEmployees.find(e => e.id === t.backupApproverId) : undefined,
+    }));
+};
+
+// Helper to calculate shift hours
+export const calculateShiftHours = (startTime: string, endTime: string): number => {
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  return (endMinutes - startMinutes) / 60;
 };
