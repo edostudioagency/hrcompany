@@ -12,6 +12,7 @@ export interface Company {
   name: string;
   legalName: string;
   siret?: string;
+  accountantEmail?: string;
   defaultWorkSchedule?: WorkSchedule;
   createdAt: Date;
 }
@@ -26,7 +27,11 @@ export interface Team {
   id: string;
   companyId: string;
   name: string;
+  primaryApproverId?: string;
+  backupApproverId?: string;
   createdAt: Date;
+  primaryApprover?: Employee;
+  backupApprover?: Employee;
 }
 
 export interface Employee {
@@ -109,6 +114,21 @@ export interface MonthlyExport {
   generatedById: string;
   fileUrl: string;
   generatedBy?: Employee;
+}
+
+// Notification types
+export type NotificationType = 'time_off_request' | 'time_off_approved' | 'time_off_rejected' | 'shift_swap_request' | 'shift_swap_accepted' | 'shift_swap_rejected';
+
+export interface Notification {
+  id: string;
+  companyId: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  relatedId?: string;
+  createdAt: Date;
 }
 
 // Statistics

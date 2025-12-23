@@ -28,7 +28,7 @@ const mockExports: MonthlyExport[] = [
 ];
 
 const Exports = () => {
-  const { currentCompany, companies, currentUser } = useApp();
+  const { currentCompany, companies, currentUser, setCompanies } = useApp();
   const [exports, setExports] = useState<MonthlyExport[]>(mockExports);
 
   if (!currentCompany) {
@@ -45,7 +45,7 @@ const Exports = () => {
     (e) => e.companyId === currentCompany.id
   );
 
-  const handleExport = (companyId: string, month: number, year: number) => {
+  const handleExport = (companyId: string, month: number, year: number, sendToAccountant?: boolean) => {
     const newExport: MonthlyExport = {
       id: Date.now().toString(),
       companyId,
@@ -59,6 +59,14 @@ const Exports = () => {
     setExports([newExport, ...exports]);
   };
 
+  const handleUpdateAccountantEmail = (companyId: string, email: string) => {
+    setCompanies((prev) =>
+      prev.map((c) =>
+        c.id === companyId ? { ...c, accountantEmail: email } : c
+      )
+    );
+  };
+
   return (
     <MainLayout
       title="Exports comptables"
@@ -69,6 +77,7 @@ const Exports = () => {
           companies={companies}
           currentCompany={currentCompany}
           onExport={handleExport}
+          onUpdateAccountantEmail={handleUpdateAccountantEmail}
         />
 
         <ExportHistory exports={companyExports} />
