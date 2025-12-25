@@ -1,4 +1,4 @@
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, LogOut, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,14 +9,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
 }
+
+const roleLabels = {
+  admin: 'Administrateur',
+  manager: 'Manager',
+  employee: 'Employé',
+};
+
+const roleColors = {
+  admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  employee: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+};
 
 export function Header({ title, subtitle }: HeaderProps) {
   const {
@@ -29,6 +44,8 @@ export function Header({ title, subtitle }: HeaderProps) {
     markNotificationAsRead,
     markAllNotificationsAsRead,
   } = useApp();
+  
+  const { user, role, signOut } = useAuth();
 
   // Filter notifications for current user and company
   const userNotifications = notifications
@@ -39,8 +56,13 @@ export function Header({ title, subtitle }: HeaderProps) {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   // Only show notifications to managers and admins
-  const showNotifications =
-    currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const showNotifications = role === 'admin' || role === 'manager';
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const userInitials = user?.email?.substring(0, 2).toUpperCase() || 'U';
 
   return (
     <header
@@ -108,6 +130,42 @@ export function Header({ title, subtitle }: HeaderProps) {
               onMarkAllAsRead={markAllNotificationsAsRead}
             />
           )}
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-2">
+                  <p className="text-sm font-medium leading-none">{user?.email}</p>
+                  {role && (
+                    <Badge className={cn('w-fit', roleColors[role])}>
+                      <Shield className="mr-1 h-3 w-3" />
+                      {roleLabels[role]}
+                    </Badge>
+                  )}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Mon profil
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
