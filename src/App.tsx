@@ -13,15 +13,12 @@ import Employees from "./pages/Employees";
 import Shifts from "./pages/Shifts";
 import TimeOff from "./pages/TimeOff";
 import Swaps from "./pages/Swaps";
-import Exports from "./pages/Exports";
-import Companies from "./pages/Companies";
-import Teams from "./pages/Teams";
+import Commissions from "./pages/Commissions";
+import Payslips from "./pages/Payslips";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
-import UserManagement from "./pages/UserManagement";
-import Commissions from "./pages/Commissions";
-import Payslips from "./pages/Payslips";
+import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +35,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/reset-password" element={<ResetPassword />} />
+              <Route path="/accept-invitation" element={<AcceptInvitation />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
               
               {/* Protected routes - all authenticated users */}
@@ -61,6 +59,11 @@ const App = () => (
                   <Swaps />
                 </ProtectedRoute>
               } />
+              <Route path="/payslips" element={
+                <ProtectedRoute>
+                  <Payslips />
+                </ProtectedRoute>
+              } />
               
               {/* Protected routes - admin and manager only */}
               <Route path="/employees" element={
@@ -68,36 +71,9 @@ const App = () => (
                   <Employees />
                 </ProtectedRoute>
               } />
-              <Route path="/teams" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                  <Teams />
-                </ProtectedRoute>
-              } />
-              <Route path="/exports" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                  <Exports />
-                </ProtectedRoute>
-              } />
               <Route path="/commissions" element={
                 <ProtectedRoute allowedRoles={['admin', 'manager']}>
                   <Commissions />
-                </ProtectedRoute>
-              } />
-              <Route path="/payslips" element={
-                <ProtectedRoute>
-                  <Payslips />
-                </ProtectedRoute>
-              } />
-              
-              {/* Protected routes - admin only */}
-              <Route path="/companies" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Companies />
-                </ProtectedRoute>
-              } />
-              <Route path="/users" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <UserManagement />
                 </ProtectedRoute>
               } />
               

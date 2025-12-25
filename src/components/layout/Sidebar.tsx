@@ -5,13 +5,11 @@ import {
   Calendar,
   Clock,
   ArrowLeftRight,
-  FileSpreadsheet,
-  Building2,
   ChevronLeft,
   ChevronRight,
-  UserCog,
   Euro,
   FileText,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -19,28 +17,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { mockTimeOffRequests, mockShiftSwapRequests } from '@/data/mockData';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const navigation = [
   { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
-  { name: 'Entreprises', href: '/companies', icon: Building2, adminOnly: true },
-  { name: 'Utilisateurs', href: '/users', icon: UserCog, adminOnly: true },
-  { name: 'Employés', href: '/employees', icon: Users },
+  { name: 'Collaborateurs', href: '/employees', icon: Users, managerOnly: true },
   { name: 'Planning', href: '/shifts', icon: Calendar },
   { name: 'Congés', href: '/time-off', icon: Clock, hasBadge: true },
   { name: 'Échanges', href: '/swaps', icon: ArrowLeftRight, hasBadge: true },
-  { name: 'Commissions', href: '/commissions', icon: Euro },
+  { name: 'Commissions', href: '/commissions', icon: Euro, managerOnly: true },
   { name: 'Fiches de paie', href: '/payslips', icon: FileText },
-  { name: 'Exports', href: '/exports', icon: FileSpreadsheet },
 ];
 
 export function Sidebar() {
   const location = useLocation();
-  const { currentCompany, sidebarOpen, setSidebarOpen } = useApp();
+  const { sidebarOpen, setSidebarOpen } = useApp();
   const { user, role } = useAuth();
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  const [badgeCounts, setBadgeCounts] = useState({ timeOff: 0, swaps: 0 });
 
   useEffect(() => {
     if (user) {
@@ -53,26 +48,31 @@ export function Sidebar() {
     }
   }, [user]);
 
-  // Count pending requests for badges
-  const pendingTimeOff = currentCompany
-    ? mockTimeOffRequests.filter(
-        (r) => r.companyId === currentCompany.id && r.status === 'pending'
-      ).length
-    : 0;
+  useEffect(() => {
+    const fetchBadgeCounts = async () => {
+      if (role !== 'admin' && role !== 'manager') return;
+      
+      const [timeOffRes, swapsRes] = await Promise.all([
+        supabase.from('time_off_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('shift_swap_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      ]);
+      
+      setBadgeCounts({
+        timeOff: timeOffRes.count || 0,
+        swaps: swapsRes.count || 0,
+      });
+    };
 
-  const pendingSwaps = currentCompany
-    ? mockShiftSwapRequests.filter(
-        (r) => r.companyId === currentCompany.id && r.status === 'pending'
-      ).length
-    : 0;
+    fetchBadgeCounts();
+  }, [role]);
 
   const getBadgeCount = (href: string) => {
-    if (href === '/time-off') return pendingTimeOff;
-    if (href === '/swaps') return pendingSwaps;
+    if (href === '/time-off') return badgeCounts.timeOff;
+    if (href === '/swaps') return badgeCounts.swaps;
     return 0;
   };
 
-  const isAdmin = role === 'admin';
+  const isManagerOrAdmin = role === 'admin' || role === 'manager';
   const displayName = profile?.first_name && profile?.last_name 
     ? `${profile.first_name} ${profile.last_name}` 
     : user?.email?.split('@')[0] || '';
@@ -87,7 +87,7 @@ export function Sidebar() {
         sidebarOpen ? 'w-64' : 'w-20'
       )}
     >
-      {/* Logo & Company */}
+      {/* Logo */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {sidebarOpen ? (
           <div className="flex items-center gap-3">
@@ -96,9 +96,7 @@ export function Sidebar() {
             </div>
             <div>
               <h1 className="font-bold text-sidebar-foreground">HR Manager</h1>
-              <p className="text-xs text-sidebar-muted truncate max-w-[140px]">
-                {currentCompany?.name || 'Sélectionner'}
-              </p>
+              <p className="text-xs text-sidebar-muted">Gestion RH simplifiée</p>
             </div>
           </div>
         ) : (
@@ -111,11 +109,11 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
         {navigation.map((item) => {
-          // Hide admin-only items for non-admins
-          if (item.adminOnly && !isAdmin) return null;
+          // Hide manager-only items for employees
+          if (item.managerOnly && !isManagerOrAdmin) return null;
 
           const isActive = location.pathname === item.href;
-          const badgeCount = item.hasBadge ? getBadgeCount(item.href) : 0;
+          const badgeCount = item.hasBadge && isManagerOrAdmin ? getBadgeCount(item.href) : 0;
 
           return (
             <NavLink

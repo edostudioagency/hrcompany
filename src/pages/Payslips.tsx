@@ -342,14 +342,14 @@ export default function PayslipsPage() {
               />
             </div>
             <Select
-              value={selectedMonth?.toString() || ''}
-              onValueChange={(v) => setSelectedMonth(v ? parseInt(v) : null)}
+              value={selectedMonth?.toString() || 'all'}
+              onValueChange={(v) => setSelectedMonth(v === 'all' ? null : parseInt(v))}
             >
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Mois" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les mois</SelectItem>
+                <SelectItem value="all">Tous les mois</SelectItem>
                 {MONTHS.map((m) => (
                   <SelectItem key={m.value} value={m.value.toString()}>
                     {m.label}
@@ -358,14 +358,14 @@ export default function PayslipsPage() {
               </SelectContent>
             </Select>
             <Select
-              value={selectedYear?.toString() || ''}
-              onValueChange={(v) => setSelectedYear(v ? parseInt(v) : null)}
+              value={selectedYear?.toString() || 'all'}
+              onValueChange={(v) => setSelectedYear(v === 'all' ? null : parseInt(v))}
             >
               <SelectTrigger className="w-[100px]">
                 <SelectValue placeholder="Année" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes</SelectItem>
+                <SelectItem value="all">Toutes</SelectItem>
                 {years.map((y) => (
                   <SelectItem key={y} value={y.toString()}>
                     {y}
