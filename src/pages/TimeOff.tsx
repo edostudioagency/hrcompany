@@ -93,9 +93,13 @@ const TimeOff = () => {
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
     reason: '',
+    employeeId: '', // For managers/admins to select an employee
   });
 
   const isManagerOrAdmin = role === 'manager' || role === 'admin';
+  
+  // Allow managers/admins to create requests even without being linked to an employee
+  const canCreateRequest = isManagerOrAdmin || currentEmployeeId;
 
   const fetchData = async () => {
     try {
@@ -134,15 +138,25 @@ const TimeOff = () => {
   }, [user?.id]);
 
   const handleSubmit = async () => {
-    if (!formData.startDate || !formData.endDate || !currentEmployeeId) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+    // Determine employee_id based on role
+    const targetEmployeeId = isManagerOrAdmin 
+      ? (formData.employeeId || currentEmployeeId) 
+      : currentEmployeeId;
+    
+    if (!formData.startDate || !formData.endDate) {
+      toast.error('Veuillez sélectionner les dates');
+      return;
+    }
+    
+    if (!targetEmployeeId) {
+      toast.error('Veuillez sélectionner un employé');
       return;
     }
 
     setSubmitting(true);
     try {
       const { error } = await supabase.from('time_off_requests').insert({
-        employee_id: currentEmployeeId,
+        employee_id: targetEmployeeId,
         start_date: format(formData.startDate, 'yyyy-MM-dd'),
         end_date: format(formData.endDate, 'yyyy-MM-dd'),
         type: formData.type,
@@ -153,7 +167,7 @@ const TimeOff = () => {
 
       toast.success('Demande soumise avec succès');
       setIsFormOpen(false);
-      setFormData({ type: 'vacation', startDate: undefined, endDate: undefined, reason: '' });
+      setFormData({ type: 'vacation', startDate: undefined, endDate: undefined, reason: '', employeeId: '' });
       fetchData();
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -258,7 +272,7 @@ const TimeOff = () => {
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
-                <Button disabled={!currentEmployeeId}>
+                <Button disabled={!canCreateRequest}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nouvelle demande
                 </Button>
@@ -271,6 +285,26 @@ const TimeOff = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
+                  {isManagerOrAdmin && (
+                    <div className="space-y-2">
+                      <Label>Employé</Label>
+                      <Select 
+                        value={formData.employeeId || currentEmployeeId || ''} 
+                        onValueChange={(v) => setFormData({ ...formData, employeeId: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un employé" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.first_name} {emp.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Type de congé</Label>
                     <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
