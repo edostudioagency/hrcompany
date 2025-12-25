@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock } from 'lucide-react';
+import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleDialog';
+import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialog';
 
 interface Employee {
   id: string;
@@ -54,6 +55,9 @@ interface Employee {
   position: string | null;
   hourly_rate: number | null;
   status: string;
+  contract_type: string | null;
+  contract_start_date: string | null;
+  contract_end_date: string | null;
   created_at: string;
 }
 
@@ -80,6 +84,23 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const getContractTypeBadge = (type: string | null) => {
+  const labels: Record<string, { label: string; className: string }> = {
+    cdi: { label: 'CDI', className: 'bg-blue-100 text-blue-800' },
+    cdd: { label: 'CDD', className: 'bg-orange-100 text-orange-800' },
+    alternance: { label: 'Alternance', className: 'bg-purple-100 text-purple-800' },
+    stage: { label: 'Stage', className: 'bg-pink-100 text-pink-800' },
+    freelance: { label: 'Freelance', className: 'bg-teal-100 text-teal-800' },
+    interim: { label: 'Intérim', className: 'bg-amber-100 text-amber-800' },
+    other: { label: 'Autre', className: 'bg-gray-100 text-gray-800' },
+  };
+  
+  if (!type) return <span className="text-muted-foreground">-</span>;
+  const found = labels[type];
+  if (!found) return <Badge variant="outline">{type}</Badge>;
+  return <Badge className={found.className}>{found.label}</Badge>;
+};
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +108,8 @@ export default function EmployeesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
   
@@ -98,6 +121,7 @@ export default function EmployeesPage() {
     phone: '',
     position: '',
     hourly_rate: '',
+    contract_type: '',
   });
 
   const fetchEmployees = async () => {
@@ -135,6 +159,7 @@ export default function EmployeesPage() {
         phone: formData.phone || null,
         position: formData.position || null,
         hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+        contract_type: formData.contract_type || null,
         invitation_token: crypto.randomUUID(),
       };
 
@@ -232,8 +257,14 @@ export default function EmployeesPage() {
       phone: employee.phone || '',
       position: employee.position || '',
       hourly_rate: employee.hourly_rate?.toString() || '',
+      contract_type: employee.contract_type || '',
     });
     setDialogOpen(true);
+  };
+
+  const openDetailDialog = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setDetailDialogOpen(true);
   };
 
   const openScheduleDialog = (employeeId: string) => {
@@ -250,6 +281,7 @@ export default function EmployeesPage() {
       phone: '',
       position: '',
       hourly_rate: '',
+      contract_type: '',
     });
   };
 
@@ -387,6 +419,7 @@ export default function EmployeesPage() {
                     <TableHead>Employé</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Poste</TableHead>
+                    <TableHead>Contrat</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -394,7 +427,7 @@ export default function EmployeesPage() {
                 <TableBody>
                   {filteredEmployees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Aucun employé trouvé
                       </TableCell>
                     </TableRow>
@@ -418,9 +451,18 @@ export default function EmployeesPage() {
                         </TableCell>
                         <TableCell>{employee.email}</TableCell>
                         <TableCell>{employee.position || '-'}</TableCell>
+                        <TableCell>{getContractTypeBadge(employee.contract_type)}</TableCell>
                         <TableCell>{getStatusBadge(employee.status)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDetailDialog(employee)}
+                              title="Voir les détails"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -494,6 +536,14 @@ export default function EmployeesPage() {
           onOpenChange={setScheduleDialogOpen}
         />
       )}
+
+      {/* Employee Detail Dialog */}
+      <EmployeeDetailDialog
+        employee={selectedEmployee}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onUpdate={fetchEmployees}
+      />
     </MainLayout>
   );
 }
