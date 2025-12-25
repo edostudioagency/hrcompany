@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,20 +22,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
-  Calendar,
   Upload,
   FileText,
   Trash2,
   Download,
   Loader2,
-  User,
   Briefcase,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { DateInput } from '@/components/ui/date-input';
 
 interface Employee {
   id: string;
@@ -334,63 +328,23 @@ export function EmployeeDetailDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date d'entrée</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          disabled={!isManagerOrAdmin}
-                          className={cn(
-                            'w-full justify-start text-left font-normal',
-                            !startDate && 'text-muted-foreground'
-                          )}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {startDate
-                            ? format(startDate, 'dd/MM/yyyy', { locale: fr })
-                            : 'Sélectionner'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          locale={fr}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInput
+                      value={startDate}
+                      onChange={setStartDate}
+                      disabled={!isManagerOrAdmin}
+                      placeholder="JJ/MM/AAAA"
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Date de sortie (optionnel)</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          disabled={!isManagerOrAdmin}
-                          className={cn(
-                            'w-full justify-start text-left font-normal',
-                            !endDate && 'text-muted-foreground'
-                          )}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {endDate
-                            ? format(endDate, 'dd/MM/yyyy', { locale: fr })
-                            : 'Sélectionner'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          locale={fr}
-                          disabled={(date) => startDate ? date < startDate : false}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInput
+                      value={endDate}
+                      onChange={setEndDate}
+                      disabled={!isManagerOrAdmin}
+                      placeholder="JJ/MM/AAAA"
+                      minDate={startDate}
+                    />
                   </div>
                 </div>
 
