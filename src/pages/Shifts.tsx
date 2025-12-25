@@ -113,8 +113,7 @@ export default function ShiftsPage() {
           .order('date'),
         supabase
           .from('employees')
-          .select('id, first_name, last_name, status')
-          .eq('status', 'active'),
+          .select('id, first_name, last_name, status'),
         supabase
           .from('time_off_requests')
           .select('*')
@@ -261,10 +260,14 @@ export default function ShiftsPage() {
   const getTimeOffLabel = (type: string) => {
     const labels: Record<string, string> = {
       conge_paye: 'Congé',
+      vacation: 'Congé',
       rtt: 'RTT',
       maladie: 'Maladie',
+      sick: 'Maladie',
       sans_solde: 'Sans solde',
+      personal: 'Personnel',
       autre: 'Autre',
+      other: 'Autre',
     };
     return labels[type] || type;
   };
