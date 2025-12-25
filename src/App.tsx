@@ -19,6 +19,7 @@ import Teams from "./pages/Teams";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,11 @@ const App = () => (
               <Route path="/companies" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Companies />
+                </ProtectedRoute>
+              } />
+              <Route path="/users" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <UserManagement />
                 </ProtectedRoute>
               } />
               

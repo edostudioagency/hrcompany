@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -22,6 +23,7 @@ import { mockTimeOffRequests, mockShiftSwapRequests } from '@/data/mockData';
 const navigation = [
   { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
   { name: 'Entreprises', href: '/companies', icon: Building2, adminOnly: true },
+  { name: 'Utilisateurs', href: '/users', icon: UserCog, adminOnly: true },
   { name: 'Employés', href: '/employees', icon: Users },
   { name: 'Planning', href: '/shifts', icon: Calendar },
   { name: 'Congés', href: '/time-off', icon: Clock, hasBadge: true },
