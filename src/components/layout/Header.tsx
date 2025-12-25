@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Search, ChevronDown, LogOut, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   title: string;
@@ -46,6 +48,18 @@ export function Header({ title, subtitle }: HeaderProps) {
   } = useApp();
   
   const { user, role, signOut } = useAuth();
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setProfile(data));
+    }
+  }, [user]);
 
   // Filter notifications for current user and company
   const userNotifications = notifications
@@ -62,7 +76,13 @@ export function Header({ title, subtitle }: HeaderProps) {
     await signOut();
   };
 
-  const userInitials = user?.email?.substring(0, 2).toUpperCase() || 'U';
+  const userInitials = profile?.first_name && profile?.last_name
+    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+    : user?.email?.substring(0, 2).toUpperCase() || 'U';
+  
+  const displayName = profile?.first_name && profile?.last_name
+    ? `${profile.first_name} ${profile.last_name}`
+    : user?.email || '';
 
   return (
     <header
@@ -145,7 +165,8 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-2">
-                  <p className="text-sm font-medium leading-none">{user?.email}</p>
+                  <p className="text-sm font-medium leading-none">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                   {role && (
                     <Badge className={cn('w-fit', roleColors[role])}>
                       <Shield className="mr-1 h-3 w-3" />
