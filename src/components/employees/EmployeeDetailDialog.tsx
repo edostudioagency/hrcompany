@@ -164,7 +164,13 @@ export function EmployeeDetailDialog({
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${file.name}`;
+      // Sanitize filename: remove accents, special characters, and spaces
+      const sanitizedName = file.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace special chars with underscore
+        .replace(/_+/g, '_'); // Remove multiple consecutive underscores
+      const fileName = `${Date.now()}_${sanitizedName}`;
       const filePath = `${employee.id}/${fileName}`;
 
       // Upload to storage
