@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, LogOut, User, Shield } from 'lucide-react';
+import { Search, LogOut, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -36,17 +35,7 @@ const roleColors = {
 };
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const {
-    currentCompany,
-    setCurrentCompany,
-    companies,
-    sidebarOpen,
-    currentUser,
-    notifications,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-  } = useApp();
-  
+  const { sidebarOpen } = useApp();
   const { user, role, signOut } = useAuth();
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
 
@@ -60,17 +49,6 @@ export function Header({ title, subtitle }: HeaderProps) {
         .then(({ data }) => setProfile(data));
     }
   }, [user]);
-
-  // Filter notifications for current user and company
-  const userNotifications = notifications
-    .filter(
-      (n) =>
-        n.userId === currentUser?.id && n.companyId === currentCompany?.id
-    )
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-  // Only show notifications to managers and admins
-  const showNotifications = role === 'admin' || role === 'manager';
 
   const handleSignOut = async () => {
     await signOut();
@@ -110,46 +88,6 @@ export function Header({ title, subtitle }: HeaderProps) {
               className="w-64 pl-9 bg-secondary/50 border-0 focus-visible:ring-1"
             />
           </div>
-
-          {/* Company Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="gap-2 bg-card border-border/50"
-              >
-                <span className="text-sm font-medium">
-                  {currentCompany?.name || 'Entreprise'}
-                </span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Changer d'entreprise</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {companies.map((company) => (
-                <DropdownMenuItem
-                  key={company.id}
-                  onClick={() => setCurrentCompany(company)}
-                  className={cn(
-                    'cursor-pointer',
-                    currentCompany?.id === company.id && 'bg-primary/10'
-                  )}
-                >
-                  {company.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Notifications */}
-          {showNotifications && (
-            <NotificationDropdown
-              notifications={userNotifications}
-              onMarkAsRead={markNotificationAsRead}
-              onMarkAllAsRead={markAllNotificationsAsRead}
-            />
-          )}
 
           {/* User Menu */}
           <DropdownMenu>
