@@ -350,12 +350,13 @@ export function EmployeeDetailDialog({
                             : 'Sélectionner'}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" align="start">
                         <CalendarComponent
                           mode="single"
                           selected={startDate}
                           onSelect={setStartDate}
                           locale={fr}
+                          className="pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
@@ -379,13 +380,14 @@ export function EmployeeDetailDialog({
                             : 'Sélectionner'}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" align="start">
                         <CalendarComponent
                           mode="single"
                           selected={endDate}
                           onSelect={setEndDate}
                           locale={fr}
                           disabled={(date) => startDate ? date < startDate : false}
+                          className="pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
