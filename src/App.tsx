@@ -20,6 +20,8 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
 import UserManagement from "./pages/UserManagement";
+import Commissions from "./pages/Commissions";
+import Payslips from "./pages/Payslips";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,16 @@ const App = () => (
               <Route path="/exports" element={
                 <ProtectedRoute allowedRoles={['admin', 'manager']}>
                   <Exports />
+                </ProtectedRoute>
+              } />
+              <Route path="/commissions" element={
+                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <Commissions />
+                </ProtectedRoute>
+              } />
+              <Route path="/payslips" element={
+                <ProtectedRoute>
+                  <Payslips />
                 </ProtectedRoute>
               } />
               
