@@ -7,18 +7,19 @@ import {
   ArrowLeftRight,
   FileSpreadsheet,
   Building2,
-  Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { mockTimeOffRequests, mockShiftSwapRequests } from '@/data/mockData';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const navigation = [
   { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
@@ -33,7 +34,20 @@ const navigation = [
 
 export function Sidebar() {
   const location = useLocation();
-  const { currentCompany, currentUser, sidebarOpen, setSidebarOpen } = useApp();
+  const { currentCompany, sidebarOpen, setSidebarOpen } = useApp();
+  const { user, role } = useAuth();
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setProfile(data));
+    }
+  }, [user]);
 
   // Count pending requests for badges
   const pendingTimeOff = currentCompany
@@ -54,7 +68,13 @@ export function Sidebar() {
     return 0;
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = role === 'admin';
+  const displayName = profile?.first_name && profile?.last_name 
+    ? `${profile.first_name} ${profile.last_name}` 
+    : user?.email?.split('@')[0] || '';
+  const initials = profile?.first_name && profile?.last_name
+    ? `${profile.first_name[0]}${profile.last_name[0]}`
+    : user?.email?.[0]?.toUpperCase() || '?';
 
   return (
     <aside
@@ -126,20 +146,19 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
-        {sidebarOpen && currentUser && (
+        {sidebarOpen && user && (
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
               <span className="text-sm font-medium text-sidebar-foreground">
-                {currentUser.firstName[0]}
-                {currentUser.lastName[0]}
+                {initials}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {currentUser.firstName} {currentUser.lastName}
+                {displayName}
               </p>
               <p className="text-xs text-sidebar-muted capitalize">
-                {currentUser.role}
+                {role || 'employee'}
               </p>
             </div>
           </div>
