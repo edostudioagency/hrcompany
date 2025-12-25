@@ -10,6 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
+  Euro,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -29,6 +31,8 @@ const navigation = [
   { name: 'Planning', href: '/shifts', icon: Calendar },
   { name: 'Congés', href: '/time-off', icon: Clock, hasBadge: true },
   { name: 'Échanges', href: '/swaps', icon: ArrowLeftRight, hasBadge: true },
+  { name: 'Commissions', href: '/commissions', icon: Euro },
+  { name: 'Fiches de paie', href: '/payslips', icon: FileText },
   { name: 'Exports', href: '/exports', icon: FileSpreadsheet },
 ];
 
