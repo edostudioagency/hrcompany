@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -10,153 +13,487 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EmployeeTable } from '@/components/employees/EmployeeTable';
-import { EmployeeForm } from '@/components/employees/EmployeeForm';
-import { useApp } from '@/contexts/AppContext';
-import { mockEmployees, mockTeams } from '@/data/mockData';
-import { Employee, ROLE_LABELS } from '@/types/hr';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleDialog';
 
-const Employees = () => {
-  const { currentCompany } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [teamFilter, setTeamFilter] = useState<string>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  position: string | null;
+  hourly_rate: number | null;
+  status: string;
+  created_at: string;
+}
 
-  if (!currentCompany) {
-    return (
-      <MainLayout title="Employés">
-        <div className="text-center py-20 text-muted-foreground">
-          Sélectionnez une entreprise pour voir les employés.
-        </div>
-      </MainLayout>
-    );
+const DAYS_OF_WEEK = [
+  { value: 1, label: 'Lundi' },
+  { value: 2, label: 'Mardi' },
+  { value: 3, label: 'Mercredi' },
+  { value: 4, label: 'Jeudi' },
+  { value: 5, label: 'Vendredi' },
+  { value: 6, label: 'Samedi' },
+  { value: 0, label: 'Dimanche' },
+];
+
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'active':
+      return <Badge variant="default" className="bg-green-100 text-green-800">Actif</Badge>;
+    case 'inactive':
+      return <Badge variant="secondary">Inactif</Badge>;
+    case 'pending':
+      return <Badge variant="outline" className="border-yellow-500 text-yellow-700">En attente</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
   }
-
-  const teams = mockTeams.filter((t) => t.companyId === currentCompany.id);
-  const employees = mockEmployees.filter((e) => e.companyId === currentCompany.id);
-
-  // Apply filters
-  const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      `${employee.firstName} ${employee.lastName}`
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesTeam =
-      teamFilter === 'all' || employee.teamId === teamFilter;
-
-    const matchesRole = roleFilter === 'all' || employee.role === roleFilter;
-
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && employee.active) ||
-      (statusFilter === 'inactive' && !employee.active);
-
-    return matchesSearch && matchesTeam && matchesRole && matchesStatus;
-  });
-
-  const handleEdit = (employee: Employee) => {
-    setEditingEmployee(employee);
-    setIsFormOpen(true);
-  };
-
-  const handleSave = (employee: Partial<Employee>) => {
-    // In real app, this would save to database
-    console.log('Saving employee:', employee);
-  };
-
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingEmployee(null);
-  };
-
-  return (
-    <MainLayout
-      title="Employés"
-      subtitle={`${employees.length} employés • ${currentCompany.name}`}
-    >
-      {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un employé..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2">
-          <Select value={teamFilter} onValueChange={setTeamFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Équipe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes</SelectItem>
-              {teams.map((team) => (
-                <SelectItem key={team.id} value={team.id}>
-                  {team.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Rôle" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
-              <SelectItem value="manager">{ROLE_LABELS.manager}</SelectItem>
-              <SelectItem value="employee">{ROLE_LABELS.employee}</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="active">Actifs</SelectItem>
-              <SelectItem value="inactive">Inactifs</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
-
-      {/* Employee Table */}
-      <EmployeeTable
-        employees={filteredEmployees}
-        teams={teams}
-        onEdit={handleEdit}
-      />
-
-      {/* Employee Form Modal */}
-      <EmployeeForm
-        employee={editingEmployee}
-        teams={teams}
-        companyId={currentCompany.id}
-        open={isFormOpen}
-        onClose={handleCloseForm}
-        onSave={handleSave}
-      />
-    </MainLayout>
-  );
 };
 
-export default Employees;
+export default function EmployeesPage() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [sending, setSending] = useState<string | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    position: '',
+    hourly_rate: '',
+  });
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast.error('Erreur lors du chargement des employés');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!formData.first_name || !formData.last_name || !formData.email) {
+      toast.error('Veuillez remplir les champs obligatoires');
+      return;
+    }
+
+    try {
+      const employeeData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        position: formData.position || null,
+        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+        invitation_token: crypto.randomUUID(),
+      };
+
+      if (editingEmployee) {
+        const { error } = await supabase
+          .from('employees')
+          .update(employeeData)
+          .eq('id', editingEmployee.id);
+
+        if (error) throw error;
+        toast.success('Employé modifié avec succès');
+      } else {
+        const { data, error } = await supabase
+          .from('employees')
+          .insert(employeeData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        // Create default schedule for new employee (Mon-Fri 9-17)
+        const scheduleData = DAYS_OF_WEEK.map((day) => ({
+          employee_id: data.id,
+          day_of_week: day.value,
+          start_time: day.value >= 1 && day.value <= 5 ? '09:00' : null,
+          end_time: day.value >= 1 && day.value <= 5 ? '17:00' : null,
+          is_working_day: day.value >= 1 && day.value <= 5,
+        }));
+
+        await supabase.from('employee_schedules').insert(scheduleData);
+        
+        toast.success('Employé créé avec succès');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      fetchEmployees();
+    } catch (error: unknown) {
+      console.error('Error saving employee:', error);
+      const message = error instanceof Error ? error.message : 'Erreur lors de la sauvegarde';
+      toast.error(message);
+    }
+  };
+
+  const handleSendInvitation = async (employee: Employee) => {
+    setSending(employee.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'invitation',
+          recipientEmail: employee.email,
+          recipientName: `${employee.first_name} ${employee.last_name}`,
+          data: {
+            invitationToken: crypto.randomUUID(),
+            email: employee.email,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      await supabase
+        .from('employees')
+        .update({ invitation_sent_at: new Date().toISOString() })
+        .eq('id', employee.id);
+
+      toast.success(`Invitation envoyée à ${employee.email}`);
+      fetchEmployees();
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      toast.error("Erreur lors de l'envoi de l'invitation");
+    } finally {
+      setSending(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('employees').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Employé supprimé');
+      fetchEmployees();
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      toast.error("Erreur lors de la suppression");
+    }
+  };
+
+  const openEditDialog = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setFormData({
+      first_name: employee.first_name,
+      last_name: employee.last_name,
+      email: employee.email,
+      phone: employee.phone || '',
+      position: employee.position || '',
+      hourly_rate: employee.hourly_rate?.toString() || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const openScheduleDialog = (employeeId: string) => {
+    setSelectedEmployeeId(employeeId);
+    setScheduleDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingEmployee(null);
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      position: '',
+      hourly_rate: '',
+    });
+  };
+
+  const filteredEmployees = employees.filter((e) => {
+    const search = searchQuery.toLowerCase();
+    return (
+      e.first_name.toLowerCase().includes(search) ||
+      e.last_name.toLowerCase().includes(search) ||
+      e.email.toLowerCase().includes(search) ||
+      (e.position?.toLowerCase() || '').includes(search)
+    );
+  });
+
+  return (
+    <MainLayout title="Employés" subtitle="Gérez vos employés et leurs plannings">
+      <div className="space-y-6">
+        {/* Header Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un employé..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un employé
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingEmployee ? 'Modifier l\'employé' : 'Nouvel employé'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingEmployee 
+                    ? 'Modifiez les informations de l\'employé'
+                    : 'Ajoutez un nouvel employé à votre équipe'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">Prénom *</Label>
+                    <Input
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Nom *</Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Poste</Label>
+                    <Input
+                      id="position"
+                      value={formData.position}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hourly_rate">Taux horaire (€)</Label>
+                    <Input
+                      id="hourly_rate"
+                      type="number"
+                      step="0.01"
+                      value={formData.hourly_rate}
+                      onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleSubmit}>
+                  {editingEmployee ? 'Enregistrer' : 'Créer'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Employees Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Liste des employés</CardTitle>
+            <CardDescription>
+              {employees.length} employé{employees.length > 1 ? 's' : ''} enregistré{employees.length > 1 ? 's' : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employé</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Poste</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Aucun employé trouvé
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredEmployees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-sm font-medium text-primary">
+                                {employee.first_name[0]}{employee.last_name[0]}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{employee.first_name} {employee.last_name}</p>
+                              {employee.phone && (
+                                <p className="text-xs text-muted-foreground">{employee.phone}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{employee.email}</TableCell>
+                        <TableCell>{employee.position || '-'}</TableCell>
+                        <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openScheduleDialog(employee.id)}
+                              title="Gérer le planning"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleSendInvitation(employee)}
+                              disabled={sending === employee.id}
+                              title="Envoyer invitation"
+                            >
+                              {sending === employee.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(employee)}
+                              title="Modifier"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Supprimer l'employé ?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Cette action est irréversible. Toutes les données associées seront supprimées.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(employee.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Schedule Dialog */}
+      {selectedEmployeeId && (
+        <EmployeeScheduleDialog
+          employeeId={selectedEmployeeId}
+          open={scheduleDialogOpen}
+          onOpenChange={setScheduleDialogOpen}
+        />
+      )}
+    </MainLayout>
+  );
+}

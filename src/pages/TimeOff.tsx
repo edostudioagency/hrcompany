@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,72 +10,237 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TimeOffRequestTable } from '@/components/time-off/TimeOffRequestTable';
-import { TimeOffRequestForm } from '@/components/time-off/TimeOffRequestForm';
-import { useApp } from '@/contexts/AppContext';
-import { mockTimeOffRequests } from '@/data/mockData';
-import { TimeOffRequest, RequestStatus } from '@/types/hr';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { CalendarIcon, Check, X, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface TimeOffRequest {
+  id: string;
+  employee_id: string;
+  start_date: string;
+  end_date: string;
+  type: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  employee?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+const typeLabels: Record<string, string> = {
+  vacation: 'Congés payés',
+  sick: 'Maladie',
+  personal: 'Personnel',
+  other: 'Autre',
+};
+
+const statusBadge = (status: string) => {
+  switch (status) {
+    case 'approved':
+      return <Badge className="bg-green-100 text-green-800">Approuvé</Badge>;
+    case 'rejected':
+      return <Badge variant="destructive">Refusé</Badge>;
+    case 'pending':
+      return <Badge variant="outline" className="border-yellow-500 text-yellow-700">En attente</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+};
 
 const TimeOff = () => {
-  const { currentCompany, currentUser } = useApp();
-  const { toast } = useToast();
+  const { role, user } = useAuth();
+  const [requests, setRequests] = useState<TimeOffRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string }>>([]);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
 
-  if (!currentCompany) {
-    return (
-      <MainLayout title="Congés & Absences">
-        <div className="text-center py-20 text-muted-foreground">
-          Sélectionnez une entreprise pour voir les demandes.
-        </div>
-      </MainLayout>
-    );
-  }
+  // Form state
+  const [formData, setFormData] = useState({
+    type: 'vacation',
+    startDate: undefined as Date | undefined,
+    endDate: undefined as Date | undefined,
+    reason: '',
+  });
 
-  const allRequests = mockTimeOffRequests.filter(
-    (t) => t.companyId === currentCompany.id
-  );
+  const isManagerOrAdmin = role === 'manager' || role === 'admin';
 
-  const pendingRequests = allRequests.filter((r) => r.status === 'pending');
-  const processedRequests = allRequests.filter((r) => r.status !== 'pending');
+  const fetchData = async () => {
+    try {
+      // Fetch employees
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, user_id');
+      
+      setEmployees(empData || []);
+      
+      // Find current user's employee record
+      const currentEmp = empData?.find((e) => e.user_id === user?.id);
+      setCurrentEmployeeId(currentEmp?.id || null);
 
-  const filteredRequests =
-    statusFilter === 'all'
-      ? allRequests
-      : allRequests.filter((r) => r.status === statusFilter);
+      // Fetch time off requests with employee info
+      const { data, error } = await supabase
+        .from('time_off_requests')
+        .select(`
+          *,
+          employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)
+        `)
+        .order('created_at', { ascending: false });
 
-  const isManagerOrAdmin =
-    currentUser?.role === 'manager' || currentUser?.role === 'admin';
-
-  const handleApprove = (request: TimeOffRequest) => {
-    toast({
-      title: 'Demande approuvée',
-      description: 'La demande de congé a été approuvée.',
-    });
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (request: TimeOffRequest) => {
-    toast({
-      variant: 'destructive',
-      title: 'Demande refusée',
-      description: 'La demande de congé a été refusée.',
-    });
+  useEffect(() => {
+    fetchData();
+  }, [user?.id]);
+
+  const handleSubmit = async () => {
+    if (!formData.startDate || !formData.endDate || !currentEmployeeId) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('time_off_requests').insert({
+        employee_id: currentEmployeeId,
+        start_date: format(formData.startDate, 'yyyy-MM-dd'),
+        end_date: format(formData.endDate, 'yyyy-MM-dd'),
+        type: formData.type,
+        reason: formData.reason || null,
+      });
+
+      if (error) throw error;
+
+      toast.success('Demande soumise avec succès');
+      setIsFormOpen(false);
+      setFormData({ type: 'vacation', startDate: undefined, endDate: undefined, reason: '' });
+      fetchData();
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      toast.error('Erreur lors de la soumission');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSubmitRequest = (data: any) => {
-    console.log('New request:', data);
-    // In real app, save to database
+  const handleApprove = async (request: TimeOffRequest) => {
+    try {
+      const { error } = await supabase
+        .from('time_off_requests')
+        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      // Send notification email
+      if (request.employee?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'time_off',
+            recipientEmail: request.employee.email,
+            recipientName: `${request.employee.first_name} ${request.employee.last_name}`,
+            data: {
+              status: 'approved',
+              startDate: request.start_date,
+              endDate: request.end_date,
+            },
+          },
+        });
+      }
+
+      toast.success('Demande approuvée');
+      fetchData();
+    } catch (error) {
+      console.error('Error approving request:', error);
+      toast.error('Erreur lors de l\'approbation');
+    }
   };
+
+  const handleReject = async (request: TimeOffRequest) => {
+    try {
+      const { error } = await supabase
+        .from('time_off_requests')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      // Send notification email
+      if (request.employee?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'time_off',
+            recipientEmail: request.employee.email,
+            recipientName: `${request.employee.first_name} ${request.employee.last_name}`,
+            data: {
+              status: 'rejected',
+              startDate: request.start_date,
+              endDate: request.end_date,
+            },
+          },
+        });
+      }
+
+      toast.success('Demande refusée');
+      fetchData();
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      toast.error('Erreur lors du refus');
+    }
+  };
+
+  const pendingRequests = requests.filter((r) => r.status === 'pending');
+  const filteredRequests = statusFilter === 'all' 
+    ? requests 
+    : requests.filter((r) => r.status === statusFilter);
 
   return (
     <MainLayout
       title="Congés & Absences"
-      subtitle={`${pendingRequests.length} demande(s) en attente • ${currentCompany.name}`}
+      subtitle={`${pendingRequests.length} demande(s) en attente`}
     >
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
-        <Tabs defaultValue={isManagerOrAdmin ? 'pending' : 'all'} className="w-full">
+      <div className="space-y-6">
+        <Tabs defaultValue={isManagerOrAdmin ? 'pending' : 'all'}>
           <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
             <TabsList>
               {isManagerOrAdmin && (
@@ -89,64 +254,249 @@ const TimeOff = () => {
                 </TabsTrigger>
               )}
               <TabsTrigger value="all">Toutes les demandes</TabsTrigger>
-              <TabsTrigger value="history">Historique</TabsTrigger>
             </TabsList>
 
-            <Button onClick={() => setIsFormOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvelle demande
-            </Button>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button disabled={!currentEmployeeId}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouvelle demande
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nouvelle demande de congé</DialogTitle>
+                  <DialogDescription>
+                    Remplissez le formulaire pour soumettre votre demande
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Type de congé</Label>
+                    <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vacation">Congés payés</SelectItem>
+                        <SelectItem value="sick">Maladie</SelectItem>
+                        <SelectItem value="personal">Personnel</SelectItem>
+                        <SelectItem value="other">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Date de début</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !formData.startDate && 'text-muted-foreground'
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.startDate ? format(formData.startDate, 'dd/MM/yyyy') : 'Sélectionner'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={formData.startDate}
+                            onSelect={(date) => setFormData({ ...formData, startDate: date })}
+                            locale={fr}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Date de fin</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !formData.endDate && 'text-muted-foreground'
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.endDate ? format(formData.endDate, 'dd/MM/yyyy') : 'Sélectionner'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={formData.endDate}
+                            onSelect={(date) => setFormData({ ...formData, endDate: date })}
+                            locale={fr}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Motif (optionnel)</Label>
+                    <Textarea
+                      value={formData.reason}
+                      onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                      placeholder="Précisez le motif de votre demande..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={submitting}>
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Soumettre
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {isManagerOrAdmin && (
-            <TabsContent value="pending" className="mt-0">
-              <TimeOffRequestTable
-                requests={pendingRequests}
-                showActions={true}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
+            <TabsContent value="pending">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Demandes en attente</CardTitle>
+                  <CardDescription>Demandes nécessitant votre approbation</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employé</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Dates</TableHead>
+                          <TableHead>Motif</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingRequests.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                              Aucune demande en attente
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          pendingRequests.map((request) => (
+                            <TableRow key={request.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">
+                                    {request.employee?.first_name} {request.employee?.last_name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">{request.employee?.email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>{typeLabels[request.type] || request.type}</TableCell>
+                              <TableCell>
+                                {format(new Date(request.start_date), 'dd/MM/yyyy')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
+                              </TableCell>
+                              <TableCell className="max-w-[200px] truncate">
+                                {request.reason || '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => handleApprove(request)}>
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Approuver
+                                  </Button>
+                                  <Button size="sm" variant="destructive" onClick={() => handleReject(request)}>
+                                    <X className="h-4 w-4 mr-1" />
+                                    Refuser
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
 
-          <TabsContent value="all" className="mt-0">
-            <div className="mb-4">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrer par statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="approved">Approuvé</SelectItem>
-                  <SelectItem value="rejected">Refusé</SelectItem>
-                  <SelectItem value="cancelled">Annulé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <TimeOffRequestTable
-              requests={filteredRequests}
-              showActions={isManagerOrAdmin}
-              onApprove={handleApprove}
-              onReject={handleReject}
-            />
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-0">
-            <TimeOffRequestTable
-              requests={processedRequests}
-              showActions={false}
-            />
+          <TabsContent value="all">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Toutes les demandes</CardTitle>
+                    <CardDescription>Historique de toutes les demandes</CardDescription>
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filtrer par statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="pending">En attente</SelectItem>
+                      <SelectItem value="approved">Approuvé</SelectItem>
+                      <SelectItem value="rejected">Refusé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employé</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Dates</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Soumis le</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequests.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            Aucune demande trouvée
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredRequests.map((request) => (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              {request.employee?.first_name} {request.employee?.last_name}
+                            </TableCell>
+                            <TableCell>{typeLabels[request.type] || request.type}</TableCell>
+                            <TableCell>
+                              {format(new Date(request.start_date), 'dd/MM/yyyy')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
+                            </TableCell>
+                            <TableCell>{statusBadge(request.status)}</TableCell>
+                            <TableCell>{format(new Date(request.created_at), 'dd/MM/yyyy')}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Request Form Modal */}
-      <TimeOffRequestForm
-        open={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleSubmitRequest}
-      />
     </MainLayout>
   );
 };

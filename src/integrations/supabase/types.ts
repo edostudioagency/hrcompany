@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_notifications: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          subject: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      employee_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          employee_id: string
+          end_time: string | null
+          id: string
+          is_working_day: boolean
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          employee_id: string
+          end_time?: string | null
+          id?: string
+          is_working_day?: boolean
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          employee_id?: string
+          end_time?: string | null
+          id?: string
+          is_working_day?: boolean
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          email: string
+          first_name: string
+          hourly_rate: number | null
+          id: string
+          invitation_sent_at: string | null
+          invitation_token: string | null
+          last_name: string
+          phone: string | null
+          position: string | null
+          status: string
+          team_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          hourly_rate?: number | null
+          id?: string
+          invitation_sent_at?: string | null
+          invitation_token?: string | null
+          last_name: string
+          phone?: string | null
+          position?: string | null
+          status?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          hourly_rate?: number | null
+          id?: string
+          invitation_sent_at?: string | null
+          invitation_token?: string | null
+          last_name?: string
+          phone?: string | null
+          position?: string | null
+          status?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -40,6 +168,127 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      shift_swap_requests: {
+        Row: {
+          created_at: string
+          id: string
+          original_date: string
+          reason: string | null
+          requester_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          swap_date: string
+          target_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          original_date: string
+          reason?: string | null
+          requester_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          swap_date: string
+          target_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          original_date?: string
+          reason?: string | null
+          requester_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          swap_date?: string
+          target_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_swap_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swap_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swap_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_off_requests: {
+        Row: {
+          created_at: string
+          employee_id: string
+          end_date: string
+          id: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
