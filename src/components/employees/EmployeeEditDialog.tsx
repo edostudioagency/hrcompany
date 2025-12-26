@@ -21,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, User, Briefcase, Clock, Mail } from 'lucide-react';
+import { Loader2, User, Briefcase, Clock, Mail, KeyRound } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
 
 interface Employee {
@@ -86,6 +86,7 @@ export function EmployeeEditDialog({
 }: EmployeeEditDialogProps) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   
@@ -285,6 +286,35 @@ export function EmployeeEditDialog({
       toast.error("Erreur lors de l'envoi de l'invitation");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!employee) return;
+
+    setResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          employeeId: employee.id,
+          employeeEmail: employee.email,
+          employeeName: `${employee.first_name} ${employee.last_name}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success(`Email de réinitialisation envoyé à ${employee.email}`);
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast.error('Erreur lors de l\'envoi de l\'email de réinitialisation');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -531,9 +561,9 @@ export function EmployeeEditDialog({
           <TabsContent value="invitation" className="space-y-4 mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Invitation</CardTitle>
+                <CardTitle className="text-base">Accès au compte</CardTitle>
                 <CardDescription>
-                  Envoyez une invitation par email pour que l'employé puisse accéder à son espace
+                  Gérez l'accès de l'employé à son espace personnel
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -542,17 +572,44 @@ export function EmployeeEditDialog({
                     <strong>Email:</strong> {employee.email}
                   </p>
                   <p className="text-sm mt-2">
+                    <strong>Statut:</strong>{' '}
+                    {employee.status === 'active' ? (
+                      <span className="text-green-600 font-medium">Compte actif</span>
+                    ) : (
+                      <span className="text-amber-600 font-medium">En attente d'activation</span>
+                    )}
+                  </p>
+                  <p className="text-sm mt-2">
                     <strong>Dernière invitation:</strong>{' '}
                     {employee.invitation_sent_at
                       ? format(new Date(employee.invitation_sent_at), 'dd/MM/yyyy à HH:mm')
                       : 'Jamais envoyée'}
                   </p>
                 </div>
-                <Button onClick={handleSendInvitation} disabled={sending} className="w-full">
-                  {sending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <Mail className="h-4 w-4 mr-2" />
-                  Envoyer l'invitation
-                </Button>
+
+                {employee.status !== 'active' && (
+                  <Button onClick={handleSendInvitation} disabled={sending} className="w-full">
+                    {sending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <Mail className="h-4 w-4 mr-2" />
+                    Envoyer l'invitation
+                  </Button>
+                )}
+
+                <div className="pt-2 border-t">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Réinitialiser le mot de passe de l'employé
+                  </p>
+                  <Button 
+                    onClick={handleResetPassword} 
+                    disabled={resettingPassword} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    {resettingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Envoyer un email de réinitialisation
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
