@@ -29,6 +29,8 @@ import {
   Download,
   Loader2,
   Briefcase,
+  Eye,
+  X,
 } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
 
@@ -98,6 +100,9 @@ export function EmployeeDetailDialog({
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('contract');
+  const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   
   // Contract form state
   const [contractType, setContractType] = useState(employee?.contract_type || '');
@@ -215,6 +220,41 @@ export function EmployeeDetailDialog({
       // Reset file input
       e.target.value = '';
     }
+  };
+
+  const handlePreview = async (doc: EmployeeDocument) => {
+    setPreviewDoc(doc);
+    setLoadingPreview(true);
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('employee-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      setPreviewUrl(url);
+    } catch (error) {
+      console.error('Error loading preview:', error);
+      toast.error('Erreur lors du chargement de la prévisualisation');
+      setPreviewDoc(null);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewDoc(null);
+    setPreviewUrl(null);
+  };
+
+  const isPreviewable = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
   };
 
   const handleDownload = async (doc: EmployeeDocument) => {
@@ -474,6 +514,16 @@ export function EmployeeDetailDialog({
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          {isPreviewable(doc.document_name) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handlePreview(doc)}
+                              title="Aperçu"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -502,6 +552,62 @@ export function EmployeeDetailDialog({
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Preview Modal */}
+        {previewDoc && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <div className="relative w-full max-w-4xl max-h-[90vh] bg-background rounded-lg shadow-lg border overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div>
+                  <h3 className="font-semibold">{previewDoc.document_name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {getDocumentTypeLabel(previewDoc.document_type)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownload(previewDoc)}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={closePreview}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 overflow-auto max-h-[calc(90vh-80px)] flex items-center justify-center">
+                {loadingPreview ? (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : previewUrl ? (
+                  previewDoc.document_name.toLowerCase().endsWith('.pdf') ? (
+                    <iframe
+                      src={previewUrl}
+                      className="w-full h-[70vh] border-0"
+                      title={previewDoc.document_name}
+                    />
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      alt={previewDoc.document_name}
+                      className="max-w-full max-h-[70vh] object-contain"
+                    />
+                  )
+                ) : (
+                  <p className="text-muted-foreground">Impossible de charger la prévisualisation</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
