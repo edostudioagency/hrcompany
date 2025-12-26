@@ -83,6 +83,15 @@ interface TimeOffRequest {
   type: string;
 }
 
+interface EmployeeSchedule {
+  id: string;
+  employee_id: string;
+  day_of_week: number;
+  is_working_day: boolean;
+  start_time: string | null;
+  end_time: string | null;
+}
+
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 export default function ShiftsPage() {
@@ -90,6 +99,7 @@ export default function ShiftsPage() {
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeeSchedules, setEmployeeSchedules] = useState<EmployeeSchedule[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -106,14 +116,19 @@ export default function ShiftsPage() {
 
   const fetchData = async () => {
     try {
-      const [shiftsRes, employeesRes, timeOffRes] = await Promise.all([
+      const [shiftsRes, employeesRes, schedulesRes, timeOffRes] = await Promise.all([
         supabase
           .from('shifts')
           .select('*, employee:employees(id, first_name, last_name)')
           .order('date'),
         supabase
           .from('employees')
-          .select('id, first_name, last_name, status'),
+          .select('id, first_name, last_name, status')
+          .eq('status', 'active'),
+        supabase
+          .from('employee_schedules')
+          .select('*')
+          .eq('is_working_day', true),
         supabase
           .from('time_off_requests')
           .select('*')
@@ -122,10 +137,12 @@ export default function ShiftsPage() {
 
       if (shiftsRes.error) throw shiftsRes.error;
       if (employeesRes.error) throw employeesRes.error;
+      if (schedulesRes.error) throw schedulesRes.error;
       if (timeOffRes.error) throw timeOffRes.error;
 
       setShifts(shiftsRes.data || []);
       setEmployees(employeesRes.data || []);
+      setEmployeeSchedules(schedulesRes.data || []);
       setTimeOffRequests(timeOffRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -158,6 +175,35 @@ export default function ShiftsPage() {
     timeOffRequests.filter(
       (t) => new Date(t.start_date) <= day && new Date(t.end_date) >= day
     );
+
+  // Get recurring schedules for a specific day of week
+  const getSchedulesForDay = (day: Date) => {
+    const dayOfWeek = day.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const timeOffEmployeeIds = getTimeOffForDay(day).map(t => t.employee_id);
+    const shiftsEmployeeIds = getShiftsForDay(day).map(s => s.employee_id);
+    
+    return employeeSchedules
+      .filter((s) => {
+        // Only show for active employees
+        const employee = employees.find(e => e.id === s.employee_id);
+        if (!employee) return false;
+        
+        // Match day of week
+        if (s.day_of_week !== dayOfWeek) return false;
+        
+        // Don't show if employee has time off
+        if (timeOffEmployeeIds.includes(s.employee_id)) return false;
+        
+        // Don't show if employee already has a manual shift
+        if (shiftsEmployeeIds.includes(s.employee_id)) return false;
+        
+        return true;
+      })
+      .map(schedule => ({
+        ...schedule,
+        employee: employees.find(e => e.id === schedule.employee_id)
+      }));
+  };
 
   const getEmployeeById = (id: string) =>
     employees.find((e) => e.id === id);
@@ -385,8 +431,12 @@ export default function ShiftsPage() {
               {days.map((day, idx) => {
                 const dayShifts = getShiftsForDay(day);
                 const dayTimeOff = getTimeOffForDay(day);
+                const daySchedules = getSchedulesForDay(day);
                 const isCurrentMonth = isSameMonth(day, currentDate);
                 const isCurrentDay = isToday(day);
+                
+                const totalEvents = dayShifts.length + dayTimeOff.length + daySchedules.length;
+                const maxDisplay = viewMode === 'week' ? 10 : 3;
 
                 return (
                   <div
@@ -434,8 +484,8 @@ export default function ShiftsPage() {
                         );
                       })}
 
-                      {/* Shifts */}
-                      {dayShifts.slice(0, viewMode === 'week' ? 10 : 3).map((shift) => (
+                      {/* Manual Shifts */}
+                      {dayShifts.slice(0, maxDisplay - dayTimeOff.length).map((shift) => (
                         <div
                           key={shift.id}
                           onClick={() => openEditShiftDialog(shift)}
@@ -445,10 +495,20 @@ export default function ShiftsPage() {
                         </div>
                       ))}
 
+                      {/* Recurring schedules */}
+                      {daySchedules.slice(0, Math.max(0, maxDisplay - dayTimeOff.length - dayShifts.length)).map((schedule) => (
+                        <div
+                          key={`schedule-${schedule.id}`}
+                          className="calendar-event bg-accent/20 text-accent-foreground text-xs px-1.5 py-0.5 rounded truncate"
+                        >
+                          {schedule.start_time?.slice(0, 5) || '09:00'} - {schedule.employee?.first_name}
+                        </div>
+                      ))}
+
                       {/* Overflow indicator */}
-                      {dayShifts.length + dayTimeOff.length > (viewMode === 'week' ? 10 : 3) && (
+                      {totalEvents > maxDisplay && (
                         <div className="text-xs text-muted-foreground pl-1">
-                          +{dayShifts.length + dayTimeOff.length - (viewMode === 'week' ? 10 : 3)} autres
+                          +{totalEvents - maxDisplay} autres
                         </div>
                       )}
                     </div>
@@ -461,7 +521,11 @@ export default function ShiftsPage() {
             <div className="flex items-center gap-6 pt-4 border-t border-border/50 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-primary/40" />
-                <span className="text-sm text-muted-foreground">Shift planifié</span>
+                <span className="text-sm text-muted-foreground">Shift manuel</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-accent/40" />
+                <span className="text-sm text-muted-foreground">Planning récurrent</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-destructive/40" />
