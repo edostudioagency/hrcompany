@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +40,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CalendarIcon, Check, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TimeOffEditDialog } from '@/components/time-off/TimeOffEditDialog';
 
 interface TimeOffRequest {
   id: string;
@@ -86,6 +87,7 @@ const TimeOff = () => {
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string }>>([]);
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
+  const [editingRequest, setEditingRequest] = useState<TimeOffRequest | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -443,6 +445,9 @@ const TimeOff = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingRequest(request)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => handleApprove(request)}>
                                     <Check className="h-4 w-4 mr-1" />
                                     Approuver
@@ -499,12 +504,13 @@ const TimeOff = () => {
                         <TableHead>Dates</TableHead>
                         <TableHead>Statut</TableHead>
                         <TableHead>Soumis le</TableHead>
+                        {isManagerOrAdmin && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={isManagerOrAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">
                             Aucune demande trouvée
                           </TableCell>
                         </TableRow>
@@ -520,6 +526,13 @@ const TimeOff = () => {
                             </TableCell>
                             <TableCell>{statusBadge(request.status)}</TableCell>
                             <TableCell>{format(new Date(request.created_at), 'dd/MM/yyyy')}</TableCell>
+                            {isManagerOrAdmin && (
+                              <TableCell className="text-right">
+                                <Button size="sm" variant="ghost" onClick={() => setEditingRequest(request)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            )}
                           </TableRow>
                         ))
                       )}
@@ -530,6 +543,13 @@ const TimeOff = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <TimeOffEditDialog
+          open={!!editingRequest}
+          onClose={() => setEditingRequest(null)}
+          request={editingRequest}
+          onUpdate={fetchData}
+        />
       </div>
     </MainLayout>
   );
