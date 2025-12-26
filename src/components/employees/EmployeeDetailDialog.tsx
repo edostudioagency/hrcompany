@@ -223,6 +223,26 @@ export function EmployeeDetailDialog({
   };
 
   const handlePreview = async (doc: EmployeeDocument) => {
+    const ext = doc.document_name.split('.').pop()?.toLowerCase();
+    
+    // For PDFs, open in new tab instead of iframe (better compatibility)
+    if (ext === 'pdf') {
+      try {
+        const { data, error } = await supabase.storage
+          .from('employee-documents')
+          .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
+
+        if (error) throw error;
+        
+        window.open(data.signedUrl, '_blank');
+      } catch (error) {
+        console.error('Error opening PDF:', error);
+        toast.error('Erreur lors de l\'ouverture du PDF');
+      }
+      return;
+    }
+
+    // For images, show in modal
     setPreviewDoc(doc);
     setLoadingPreview(true);
     
@@ -255,6 +275,10 @@ export function EmployeeDetailDialog({
   const isPreviewable = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     return ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+  };
+
+  const isPdf = (fileName: string) => {
+    return fileName.toLowerCase().endsWith('.pdf');
   };
 
   const handleDownload = async (doc: EmployeeDocument) => {
@@ -588,19 +612,11 @@ export function EmployeeDetailDialog({
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : previewUrl ? (
-                  previewDoc.document_name.toLowerCase().endsWith('.pdf') ? (
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-[70vh] border-0"
-                      title={previewDoc.document_name}
-                    />
-                  ) : (
-                    <img
-                      src={previewUrl}
-                      alt={previewDoc.document_name}
-                      className="max-w-full max-h-[70vh] object-contain"
-                    />
-                  )
+                  <img
+                    src={previewUrl}
+                    alt={previewDoc.document_name}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
                 ) : (
                   <p className="text-muted-foreground">Impossible de charger la prévisualisation</p>
                 )}
