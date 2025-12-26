@@ -176,12 +176,14 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
                     {startDate ? format(startDate, 'dd/MM/yyyy') : 'Sélectionner'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
+                    defaultMonth={startDate}
                     locale={fr}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -201,12 +203,14 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
                     {endDate ? format(endDate, 'dd/MM/yyyy') : 'Sélectionner'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
                     onSelect={setEndDate}
+                    defaultMonth={endDate}
                     locale={fr}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
