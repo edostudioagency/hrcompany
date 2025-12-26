@@ -221,6 +221,7 @@ export type Database = {
           last_name: string
           phone: string | null
           position: string | null
+          salary_type: string | null
           status: string
           team_id: string | null
           updated_at: string
@@ -243,6 +244,7 @@ export type Database = {
           last_name: string
           phone?: string | null
           position?: string | null
+          salary_type?: string | null
           status?: string
           team_id?: string | null
           updated_at?: string
@@ -265,6 +267,7 @@ export type Database = {
           last_name?: string
           phone?: string | null
           position?: string | null
+          salary_type?: string | null
           status?: string
           team_id?: string | null
           updated_at?: string

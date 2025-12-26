@@ -39,6 +39,7 @@ interface Employee {
   contract_hours: number | null;
   gross_salary: number | null;
   invitation_sent_at: string | null;
+  salary_type: string | null;
 }
 
 interface Schedule {
@@ -98,6 +99,7 @@ export function EmployeeEditDialog({
   
   // Contract state
   const [contractType, setContractType] = useState('');
+  const [salaryType, setSalaryType] = useState('fixed');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [contractHours, setContractHours] = useState('');
@@ -113,6 +115,7 @@ export function EmployeeEditDialog({
         position: employee.position || '',
       });
       setContractType(employee.contract_type || '');
+      setSalaryType(employee.salary_type || 'fixed');
       setStartDate(employee.contract_start_date ? new Date(employee.contract_start_date) : undefined);
       setEndDate(employee.contract_end_date ? new Date(employee.contract_end_date) : undefined);
       setContractHours(employee.contract_hours?.toString() || '');
@@ -191,6 +194,7 @@ export function EmployeeEditDialog({
         .from('employees')
         .update({
           contract_type: contractType || null,
+          salary_type: salaryType || 'fixed',
           contract_start_date: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           contract_end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           contract_hours: contractHours ? parseFloat(contractHours) : null,
@@ -396,6 +400,19 @@ export function EmployeeEditDialog({
                           {type.label}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Type de rémunération</Label>
+                  <Select value={salaryType} onValueChange={setSalaryType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Salaire fixe</SelectItem>
+                      <SelectItem value="commission">Avec commission</SelectItem>
+                      <SelectItem value="hourly">À l'heure</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
