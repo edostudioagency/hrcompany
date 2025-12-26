@@ -91,14 +91,17 @@ const handler = async (req: Request): Promise<Response> => {
     if (createError) {
       console.error("Error creating auth user:", createError);
       
-      // Check if user already exists
-      if (createError.message?.includes("already been registered") || createError.message?.includes("already exists")) {
+      // Check if user already exists - check both message and code
+      if (createError.message?.includes("already been registered") || 
+          createError.message?.includes("already exists") ||
+          (createError as any).code === "email_exists") {
+        console.log("User already exists, returning existingAccount flag");
         return new Response(
           JSON.stringify({ 
             error: "Un compte existe déjà avec cette adresse email",
             existingAccount: true 
           }),
-          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       
