@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Lock, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { z } from 'zod';
 
 const passwordSchema = z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" });
@@ -16,24 +16,52 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have access token in URL (from email link)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    
-    if (!accessToken) {
-      toast({
-        title: "Lien invalide",
-        description: "Ce lien de réinitialisation n'est pas valide ou a expiré",
-        variant: "destructive",
-      });
-      navigate('/auth');
-    }
-  }, [navigate, toast]);
+    const checkSession = async () => {
+      // First, handle the hash parameters if present (from email link)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+
+      if (accessToken && refreshToken && type === 'recovery') {
+        // Set the session from the recovery link
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          console.error('Error setting session:', error);
+          setErrorMessage("Lien de réinitialisation invalide ou expiré");
+          setIsValidSession(false);
+          return;
+        }
+
+        // Clear the hash from URL for cleaner display
+        window.history.replaceState(null, '', window.location.pathname);
+        setIsValidSession(true);
+        return;
+      }
+
+      // Check if there's already an active session (user came from recovery link that was auto-processed)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setIsValidSession(true);
+      } else {
+        setErrorMessage("Aucune session active. Veuillez utiliser le lien de réinitialisation envoyé par email.");
+        setIsValidSession(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,42 +70,72 @@ export default function ResetPassword() {
       passwordSchema.parse(password);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast({
-          title: "Erreur de validation",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
+        toast.error(error.errors[0].message);
         return;
       }
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive",
-      });
+      toast.error("Les mots de passe ne correspondent pas");
       return;
     }
 
     setIsLoading(true);
+    
     const { error } = await supabase.auth.updateUser({ password });
+    
     setIsLoading(false);
 
     if (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le mot de passe",
-        variant: "destructive",
-      });
+      console.error('Error updating password:', error);
+      if (error.message?.includes('same_password')) {
+        toast.error("Le nouveau mot de passe doit être différent de l'ancien");
+      } else {
+        toast.error("Impossible de mettre à jour le mot de passe: " + error.message);
+      }
     } else {
       setIsSuccess(true);
+      toast.success("Mot de passe mis à jour avec succès !");
       setTimeout(() => {
         navigate('/');
       }, 2000);
     }
   };
 
+  // Loading state while checking session
+  if (isValidSession === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Invalid session / error state
+  if (!isValidSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+              <XCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <CardTitle>Lien invalide</CardTitle>
+            <CardDescription>
+              {errorMessage || "Ce lien de réinitialisation n'est pas valide ou a expiré"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Retourner à la connexion
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Success state
   if (isSuccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
@@ -96,6 +154,7 @@ export default function ResetPassword() {
     );
   }
 
+  // Password reset form
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
