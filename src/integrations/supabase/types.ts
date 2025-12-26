@@ -207,11 +207,13 @@ export type Database = {
         Row: {
           company_id: string | null
           contract_end_date: string | null
+          contract_hours: number | null
           contract_start_date: string | null
           contract_type: string | null
           created_at: string
           email: string
           first_name: string
+          gross_salary: number | null
           hourly_rate: number | null
           id: string
           invitation_sent_at: string | null
@@ -227,11 +229,13 @@ export type Database = {
         Insert: {
           company_id?: string | null
           contract_end_date?: string | null
+          contract_hours?: number | null
           contract_start_date?: string | null
           contract_type?: string | null
           created_at?: string
           email: string
           first_name: string
+          gross_salary?: number | null
           hourly_rate?: number | null
           id?: string
           invitation_sent_at?: string | null
@@ -247,11 +251,13 @@ export type Database = {
         Update: {
           company_id?: string | null
           contract_end_date?: string | null
+          contract_hours?: number | null
           contract_start_date?: string | null
           contract_type?: string | null
           created_at?: string
           email?: string
           first_name?: string
+          gross_salary?: number | null
           hourly_rate?: number | null
           id?: string
           invitation_sent_at?: string | null

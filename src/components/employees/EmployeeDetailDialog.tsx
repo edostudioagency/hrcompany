@@ -44,6 +44,8 @@ interface Employee {
   contract_type: string | null;
   contract_start_date: string | null;
   contract_end_date: string | null;
+  contract_hours: number | null;
+  gross_salary: number | null;
 }
 
 interface EmployeeDocument {
@@ -105,12 +107,20 @@ export function EmployeeDetailDialog({
   const [endDate, setEndDate] = useState<Date | undefined>(
     employee?.contract_end_date ? new Date(employee.contract_end_date) : undefined
   );
+  const [contractHours, setContractHours] = useState<string>(
+    employee?.contract_hours?.toString() || ''
+  );
+  const [grossSalary, setGrossSalary] = useState<string>(
+    employee?.gross_salary?.toString() || ''
+  );
 
   useEffect(() => {
     if (employee) {
       setContractType(employee.contract_type || '');
       setStartDate(employee.contract_start_date ? new Date(employee.contract_start_date) : undefined);
       setEndDate(employee.contract_end_date ? new Date(employee.contract_end_date) : undefined);
+      setContractHours(employee.contract_hours?.toString() || '');
+      setGrossSalary(employee.gross_salary?.toString() || '');
       fetchDocuments();
     }
   }, [employee]);
@@ -143,6 +153,8 @@ export function EmployeeDetailDialog({
           contract_type: contractType || null,
           contract_start_date: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           contract_end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+          contract_hours: contractHours ? parseFloat(contractHours) : null,
+          gross_salary: grossSalary ? parseFloat(grossSalary) : null,
         })
         .eq('id', employee.id);
 
@@ -354,38 +366,40 @@ export function EmployeeDetailDialog({
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Heures hebdomadaires</Label>
+                    <Input
+                      type="number"
+                      value={contractHours}
+                      onChange={(e) => setContractHours(e.target.value)}
+                      disabled={!isManagerOrAdmin}
+                      placeholder="35"
+                      min="0"
+                      step="0.5"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Salaire brut mensuel (€)</Label>
+                    <Input
+                      type="number"
+                      value={grossSalary}
+                      onChange={(e) => setGrossSalary(e.target.value)}
+                      disabled={!isManagerOrAdmin}
+                      placeholder="2500"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
                 {isManagerOrAdmin && (
                   <Button onClick={handleSaveContract} disabled={loading} className="w-full">
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Enregistrer les modifications
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Contract Summary */}
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <Badge variant="secondary" className="mt-1">
-                      {getContractTypeLabel(contractType)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Début</p>
-                    <p className="font-medium mt-1">
-                      {startDate ? format(startDate, 'dd/MM/yyyy') : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fin</p>
-                    <p className="font-medium mt-1">
-                      {endDate ? format(endDate, 'dd/MM/yyyy') : 'Indéterminée'}
-                    </p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
