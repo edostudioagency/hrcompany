@@ -136,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { subject, html } = getEmailContent(type, recipientName, data);
 
     const emailResponse = await resend.emails.send({
-      from: "HR Manager <onboarding@resend.dev>",
+      from: "HR Manager <noreply@notifications.e-do.studio>",
       to: [recipientEmail],
       subject,
       html,
