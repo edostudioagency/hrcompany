@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, Eye } from 'lucide-react';
+import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, FileText } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleDialog';
 import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialog';
+import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
 
 interface Employee {
   id: string;
@@ -60,6 +61,7 @@ interface Employee {
   contract_end_date: string | null;
   contract_hours: number | null;
   gross_salary: number | null;
+  invitation_sent_at: string | null;
   created_at: string;
 }
 
@@ -109,11 +111,9 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [sending, setSending] = useState<string | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -206,38 +206,6 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleSendInvitation = async (employee: Employee) => {
-    setSending(employee.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          type: 'invitation',
-          recipientEmail: employee.email,
-          recipientName: `${employee.first_name} ${employee.last_name}`,
-          data: {
-            invitationToken: crypto.randomUUID(),
-            email: employee.email,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      await supabase
-        .from('employees')
-        .update({ invitation_sent_at: new Date().toISOString() })
-        .eq('id', employee.id);
-
-      toast.success(`Invitation envoyée à ${employee.email}`);
-      fetchEmployees();
-    } catch (error) {
-      console.error('Error sending invitation:', error);
-      toast.error("Erreur lors de l'envoi de l'invitation");
-    } finally {
-      setSending(null);
-    }
-  };
-
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase.from('employees').delete().eq('id', id);
@@ -252,26 +220,12 @@ export default function EmployeesPage() {
 
   const openEditDialog = (employee: Employee) => {
     setEditingEmployee(employee);
-    setFormData({
-      first_name: employee.first_name,
-      last_name: employee.last_name,
-      email: employee.email,
-      phone: employee.phone || '',
-      position: employee.position || '',
-      hourly_rate: employee.hourly_rate?.toString() || '',
-      contract_type: employee.contract_type || '',
-    });
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   const openDetailDialog = (employee: Employee) => {
     setSelectedEmployee(employee);
     setDetailDialogOpen(true);
-  };
-
-  const openScheduleDialog = (employeeId: string) => {
-    setSelectedEmployeeId(employeeId);
-    setScheduleDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -461,30 +415,9 @@ export default function EmployeesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openDetailDialog(employee)}
-                              title="Voir les détails"
+                              title="Documents"
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openScheduleDialog(employee.id)}
-                              title="Gérer le planning"
-                            >
-                              <Clock className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleSendInvitation(employee)}
-                              disabled={sending === employee.id}
-                              title="Envoyer invitation"
-                            >
-                              {sending === employee.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Mail className="h-4 w-4" />
-                              )}
+                              <FileText className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -530,16 +463,15 @@ export default function EmployeesPage() {
         </Card>
       </div>
 
-      {/* Schedule Dialog */}
-      {selectedEmployeeId && (
-        <EmployeeScheduleDialog
-          employeeId={selectedEmployeeId}
-          open={scheduleDialogOpen}
-          onOpenChange={setScheduleDialogOpen}
-        />
-      )}
+      {/* Employee Edit Dialog */}
+      <EmployeeEditDialog
+        employee={editingEmployee}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onUpdate={fetchEmployees}
+      />
 
-      {/* Employee Detail Dialog */}
+      {/* Employee Detail Dialog (Documents) */}
       <EmployeeDetailDialog
         employee={selectedEmployee}
         open={detailDialogOpen}
