@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Dialog,
   DialogContent,
@@ -21,8 +22,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, User, Briefcase, Clock, Mail, KeyRound } from 'lucide-react';
+import { Loader2, User, Briefcase, Clock, Mail, KeyRound, Shield } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
+import { RoleManagerSection } from './RoleManagerSection';
 
 interface Employee {
   id: string;
@@ -41,6 +43,8 @@ interface Employee {
   invitation_sent_at: string | null;
   invitation_token: string | null;
   salary_type: string | null;
+  user_id: string | null;
+  manager_id: string | null;
 }
 
 interface Schedule {
@@ -346,7 +350,7 @@ export function EmployeeEditDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info" className="gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Infos</span>
@@ -359,9 +363,13 @@ export function EmployeeEditDialog({
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Planning</span>
             </TabsTrigger>
+            <TabsTrigger value="role" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Rôle</span>
+            </TabsTrigger>
             <TabsTrigger value="invitation" className="gap-2">
               <Mail className="h-4 w-4" />
-              <span className="hidden sm:inline">Invitation</span>
+              <span className="hidden sm:inline">Accès</span>
             </TabsTrigger>
           </TabsList>
 
@@ -555,6 +563,16 @@ export function EmployeeEditDialog({
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Role Tab */}
+          <TabsContent value="role" className="space-y-4 mt-4">
+            <RoleManagerSection
+              employeeId={employee.id}
+              employeeUserId={employee.user_id}
+              managerId={employee.manager_id}
+              onUpdate={onUpdate}
+            />
           </TabsContent>
 
           {/* Invitation Tab */}

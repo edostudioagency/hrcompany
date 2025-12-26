@@ -70,6 +70,7 @@ interface Employee {
   invitation_token: string | null;
   salary_type: string | null;
   user_id: string | null;
+  manager_id: string | null;
   created_at: string;
 }
 

@@ -10,6 +10,7 @@ import {
   Euro,
   FileText,
   Building2,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -22,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const navigation = [
   { name: 'Tableau de bord', href: '/', icon: LayoutDashboard },
+  { name: 'Mon profil', href: '/profile', icon: User },
   { name: 'Collaborateurs', href: '/employees', icon: Users, managerOnly: true },
   { name: 'Planning', href: '/shifts', icon: Calendar },
   { name: 'Congés', href: '/time-off', icon: Clock, hasBadge: true },
