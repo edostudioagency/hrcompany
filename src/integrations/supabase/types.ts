@@ -219,6 +219,7 @@ export type Database = {
           invitation_sent_at: string | null
           invitation_token: string | null
           last_name: string
+          manager_id: string | null
           phone: string | null
           position: string | null
           salary_type: string | null
@@ -242,6 +243,7 @@ export type Database = {
           invitation_sent_at?: string | null
           invitation_token?: string | null
           last_name: string
+          manager_id?: string | null
           phone?: string | null
           position?: string | null
           salary_type?: string | null
@@ -265,6 +267,7 @@ export type Database = {
           invitation_sent_at?: string | null
           invitation_token?: string | null
           last_name?: string
+          manager_id?: string | null
           phone?: string | null
           position?: string | null
           salary_type?: string | null
@@ -273,7 +276,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leave_balances: {
         Row: {
