@@ -63,6 +63,43 @@ export default function ResetPassword() {
     checkSession();
   }, []);
 
+  // Link employee to user after successful authentication
+  const linkEmployeeToUser = async (userId: string, email: string) => {
+    try {
+      // Check if an employee with this email exists but isn't linked yet
+      const { data: employee, error: fetchError } = await supabase
+        .from('employees')
+        .select('id, user_id, status')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching employee:', fetchError);
+        return;
+      }
+
+      // If employee exists and is not yet linked, link them
+      if (employee && !employee.user_id) {
+        const { error: updateError } = await supabase
+          .from('employees')
+          .update({
+            user_id: userId,
+            status: 'active',
+            invitation_token: null,
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error linking employee:', updateError);
+        } else {
+          console.log('Employee linked successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error in linkEmployeeToUser:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -84,9 +121,8 @@ export default function ResetPassword() {
     
     const { error } = await supabase.auth.updateUser({ password });
     
-    setIsLoading(false);
-
     if (error) {
+      setIsLoading(false);
       console.error('Error updating password:', error);
       if (error.message?.includes('same_password')) {
         toast.error("Le nouveau mot de passe doit être différent de l'ancien");
@@ -94,6 +130,13 @@ export default function ResetPassword() {
         toast.error("Impossible de mettre à jour le mot de passe: " + error.message);
       }
     } else {
+      // Get current session to link employee
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await linkEmployeeToUser(session.user.id, session.user.email || '');
+      }
+      
+      setIsLoading(false);
       setIsSuccess(true);
       toast.success("Mot de passe mis à jour avec succès !");
       setTimeout(() => {
