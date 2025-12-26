@@ -1,4 +1,4 @@
-import { MoreHorizontal, Edit, Trash2, Mail } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Mail, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,7 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Employee, ROLE_LABELS, Team } from '@/types/hr';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Employee, ROLE_LABELS, Team, EMPLOYEE_STATUS_LABELS } from '@/types/hr';
 import { cn } from '@/lib/utils';
 
 interface EmployeeTableProps {
@@ -47,6 +52,40 @@ export function EmployeeTable({
     }
   };
 
+  const getStatusBadge = (employee: Employee) => {
+    const status = employee.status || (employee.active ? 'active' : 'inactive');
+    
+    switch (status) {
+      case 'active':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-success/10 text-success border-success/20"
+          >
+            {EMPLOYEE_STATUS_LABELS.active}
+          </Badge>
+        );
+      case 'pending':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-warning/10 text-warning border-warning/20"
+          >
+            {EMPLOYEE_STATUS_LABELS.pending}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="bg-muted text-muted-foreground"
+          >
+            {EMPLOYEE_STATUS_LABELS.inactive}
+          </Badge>
+        );
+    }
+  };
+
   return (
     <div className="table-container">
       <Table>
@@ -57,6 +96,7 @@ export function EmployeeTable({
             <TableHead className="font-semibold">Rôle</TableHead>
             <TableHead className="font-semibold">Taux horaire</TableHead>
             <TableHead className="font-semibold">Statut</TableHead>
+            <TableHead className="font-semibold">Compte</TableHead>
             <TableHead className="w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -64,7 +104,7 @@ export function EmployeeTable({
           {employees.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="h-32 text-center text-muted-foreground"
               >
                 Aucun employé trouvé
@@ -110,16 +150,25 @@ export function EmployeeTable({
                   {employee.hourlyRate ? `${employee.hourlyRate}€/h` : '-'}
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={employee.active ? 'default' : 'secondary'}
-                    className={cn(
-                      employee.active
-                        ? 'bg-success/10 text-success border-success/20'
-                        : 'bg-muted text-muted-foreground'
-                    )}
-                  >
-                    {employee.active ? 'Actif' : 'Inactif'}
-                  </Badge>
+                  {getStatusBadge(employee)}
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center">
+                        {employee.userId ? (
+                          <UserCheck className="w-5 h-5 text-success" />
+                        ) : (
+                          <UserX className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {employee.userId
+                        ? 'Compte utilisateur lié'
+                        : 'Aucun compte utilisateur lié'}
+                    </TooltipContent>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
