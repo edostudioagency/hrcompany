@@ -4,9 +4,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Allowed origins for CORS
+const allowedOrigins = [
+  Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com",
+  "https://bsdccrcdfunhoempbzdl.supabase.co",
+];
+
+const getCorsHeaders = (origin: string | null) => {
+  const isAllowed = origin && allowedOrigins.some(allowed => origin.startsWith(allowed.replace(/\/$/, '')));
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
 };
 
 interface EmailRequest {
@@ -15,6 +25,9 @@ interface EmailRequest {
   recipientName: string;
   data: Record<string, unknown>;
 }
+
+const VALID_EMAIL_TYPES = ["invitation", "schedule_change", "time_off", "shift_swap"];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getEmailContent = (type: string, recipientName: string, data: Record<string, unknown>) => {
   const baseUrl = Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com";
@@ -124,16 +137,119 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
 const handler = async (req: Request): Promise<Response> => {
   console.log("send-email function called");
   
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
+  // Check origin for non-OPTIONS requests
+  if (req.method !== "OPTIONS" && origin && !allowedOrigins.some(allowed => origin.startsWith(allowed.replace(/\/$/, '')))) {
+    console.error("Forbidden origin:", origin);
+    return new Response(JSON.stringify({ error: "Forbidden origin" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { type, recipientEmail, recipientName, data }: EmailRequest = await req.json();
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Verify user token
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error("Invalid token:", authError);
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    console.log("Authenticated user:", user.id);
+
+    // Check user role - only admin and manager can send emails
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error("Role lookup error:", roleError);
+      return new Response(JSON.stringify({ error: "User role not found" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!["admin", "manager"].includes(roleData.role)) {
+      console.error("Insufficient permissions for role:", roleData.role);
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    console.log("User role verified:", roleData.role);
+
+    // Parse and validate request body
+    const body = await req.json();
+    const { type, recipientEmail, recipientName, data }: EmailRequest = body;
+
+    // Input validation
+    if (!type || !recipientEmail || !recipientName) {
+      console.error("Missing required fields");
+      return new Response(JSON.stringify({ error: "Missing required fields: type, recipientEmail, recipientName" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!VALID_EMAIL_TYPES.includes(type)) {
+      console.error("Invalid email type:", type);
+      return new Response(JSON.stringify({ error: `Invalid email type. Must be one of: ${VALID_EMAIL_TYPES.join(", ")}` }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!EMAIL_REGEX.test(recipientEmail)) {
+      console.error("Invalid email format:", recipientEmail);
+      return new Response(JSON.stringify({ error: "Invalid email format" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (recipientName.length > 200) {
+      console.error("Recipient name too long");
+      return new Response(JSON.stringify({ error: "Recipient name too long" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
     
     console.log(`Sending ${type} email to ${recipientEmail}`);
     
-    const { subject, html } = getEmailContent(type, recipientName, data);
+    const { subject, html } = getEmailContent(type, recipientName, data || {});
 
     const emailResponse = await resend.emails.send({
       from: "HR Manager <noreply@notifications.e-do.studio>",
@@ -143,12 +259,8 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Email sent successfully:", emailResponse);
-
-    // Log the email in the database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // Log the email in the database using service role key
     await supabase.from("email_notifications").insert({
       recipient_email: recipientEmail,
       subject,

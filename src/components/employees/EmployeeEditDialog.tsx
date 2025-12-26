@@ -39,6 +39,7 @@ interface Employee {
   contract_hours: number | null;
   gross_salary: number | null;
   invitation_sent_at: string | null;
+  invitation_token: string | null;
   salary_type: string | null;
 }
 
@@ -250,6 +251,12 @@ export function EmployeeEditDialog({
   const handleSendInvitation = async () => {
     if (!employee) return;
 
+    // Ensure we have a valid invitation token from the database
+    if (!employee.invitation_token) {
+      toast.error("Aucun token d'invitation trouvé. Veuillez contacter l'administrateur.");
+      return;
+    }
+
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-email', {
@@ -258,7 +265,7 @@ export function EmployeeEditDialog({
           recipientEmail: employee.email,
           recipientName: `${employee.first_name} ${employee.last_name}`,
           data: {
-            invitationToken: crypto.randomUUID(),
+            invitationToken: employee.invitation_token, // Use existing token from DB
             email: employee.email,
           },
         },
