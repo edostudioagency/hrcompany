@@ -42,7 +42,7 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
             <p>Bonjour ${recipientName},</p>
             <p>Vous avez été invité(e) à rejoindre l'équipe sur HR Manager.</p>
             <p>Cliquez sur le lien ci-dessous pour créer votre compte :</p>
-            <a href="${baseUrl}/auth?token=${data.invitationToken}&email=${encodeURIComponent(data.email as string)}" 
+            <a href="${baseUrl}/accept-invitation?token=${data.invitationToken}" 
                style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 8px; margin: 16px 0;">
               Créer mon compte
