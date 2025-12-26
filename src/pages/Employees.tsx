@@ -31,7 +31,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, FileText } from 'lucide-react';
+import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, FileText, UserCheck, UserX } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +69,7 @@ interface Employee {
   invitation_sent_at: string | null;
   invitation_token: string | null;
   salary_type: string | null;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -379,13 +385,14 @@ export default function EmployeesPage() {
                     <TableHead>Poste</TableHead>
                     <TableHead>Contrat</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>Compte</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEmployees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         Aucun employé trouvé
                       </TableCell>
                     </TableRow>
@@ -411,6 +418,24 @@ export default function EmployeesPage() {
                         <TableCell>{employee.position || '-'}</TableCell>
                         <TableCell>{getContractTypeBadge(employee.contract_type)}</TableCell>
                         <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center">
+                                {employee.user_id ? (
+                                  <UserCheck className="w-5 h-5 text-green-600" />
+                                ) : (
+                                  <UserX className="w-5 h-5 text-muted-foreground" />
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {employee.user_id
+                                ? 'Compte utilisateur lié'
+                                : 'Aucun compte utilisateur lié'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
                             <Button

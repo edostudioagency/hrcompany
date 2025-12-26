@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Building2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Building2, CheckCircle, XCircle, LogIn } from 'lucide-react';
 
 interface InvitationData {
   id: string;
@@ -26,6 +26,7 @@ export default function AcceptInvitation() {
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [existingAccount, setExistingAccount] = useState(false);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -80,7 +81,7 @@ export default function AcceptInvitation() {
     setSubmitting(true);
 
     try {
-      // Create the user account
+      // Create the user account - the DB trigger will auto-link to employee
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password,
@@ -93,30 +94,51 @@ export default function AcceptInvitation() {
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // Check if user already exists
+        if (signUpError.message?.includes('already registered')) {
+          setExistingAccount(true);
+          toast.info('Un compte existe déjà avec cette adresse email. Veuillez vous connecter.');
+          return;
+        }
+        throw signUpError;
+      }
 
       if (authData.user) {
-        // Update the employee record with the user_id and activate
-        const { error: updateError } = await supabase
-          .from('employees')
-          .update({
-            user_id: authData.user.id,
-            status: 'active',
-            invitation_token: null,
-          })
-          .eq('id', invitation.id);
-
-        if (updateError) throw updateError;
-
         toast.success('Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
         navigate('/auth');
       }
     } catch (err: any) {
       console.error('Error creating account:', err);
-      if (err.message?.includes('already registered')) {
-        toast.error('Un compte existe déjà avec cette adresse email');
+      toast.error('Erreur lors de la création du compte');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLoginWithExistingAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!invitation) return;
+
+    setSubmitting(true);
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password,
+      });
+
+      if (signInError) throw signInError;
+
+      toast.success('Connexion réussie ! Votre compte est maintenant lié.');
+      navigate('/');
+    } catch (err: any) {
+      console.error('Error signing in:', err);
+      if (err.message?.includes('Invalid login credentials')) {
+        toast.error('Mot de passe incorrect');
       } else {
-        toast.error('Erreur lors de la création du compte');
+        toast.error('Erreur lors de la connexion');
       }
     } finally {
       setSubmitting(false);
@@ -139,11 +161,13 @@ export default function AcceptInvitation() {
             <Building2 className="w-6 h-6 text-primary" />
           </div>
           <CardTitle>
-            {error ? 'Invitation invalide' : 'Activer votre compte'}
+            {error ? 'Invitation invalide' : existingAccount ? 'Connectez-vous' : 'Activer votre compte'}
           </CardTitle>
           <CardDescription>
             {error
               ? error
+              : existingAccount
+              ? `Un compte existe déjà pour ${invitation?.email}. Entrez votre mot de passe pour lier votre compte.`
               : `Bienvenue ${invitation?.first_name} ! Créez votre mot de passe pour accéder à l'application.`}
           </CardDescription>
         </CardHeader>
@@ -156,6 +180,48 @@ export default function AcceptInvitation() {
                 <Link to="/auth">Aller à la connexion</Link>
               </Button>
             </div>
+          ) : existingAccount && invitation ? (
+            <form onSubmit={handleLoginWithExistingAccount} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={invitation.email} disabled className="bg-muted" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Votre mot de passe existant"
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connexion...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Se connecter et lier le compte
+                  </>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setExistingAccount(false)}
+              >
+                Créer un nouveau mot de passe
+              </Button>
+            </form>
           ) : invitation ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">

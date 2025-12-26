@@ -5,6 +5,7 @@ export type TimeOffType = 'conge_paye' | 'rtt' | 'maladie' | 'sans_solde' | 'aut
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type PartOfDay = 'full_day' | 'morning' | 'afternoon';
 export type ExportFormat = 'csv' | 'xlsx';
+export type EmployeeStatus = 'pending' | 'active' | 'inactive';
 
 // Models
 export interface Company {
@@ -44,6 +45,8 @@ export interface Employee {
   role: UserRole;
   hourlyRate?: number;
   active: boolean;
+  status: EmployeeStatus;
+  userId?: string;
   avatarUrl?: string;
   createdAt: Date;
 }
@@ -167,4 +170,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrateur',
   manager: 'Manager',
   employee: 'Employé',
+};
+
+export const EMPLOYEE_STATUS_LABELS: Record<EmployeeStatus, string> = {
+  pending: 'En attente',
+  active: 'Actif',
+  inactive: 'Inactif',
 };
