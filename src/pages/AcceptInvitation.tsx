@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Building2, CheckCircle, XCircle, LogIn } from 'lucide-react';
+import { Loader2, Building2, CheckCircle, XCircle, LogIn, KeyRound } from 'lucide-react';
 
 interface InvitationData {
   id: string;
@@ -27,6 +27,7 @@ export default function AcceptInvitation() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [existingAccount, setExistingAccount] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -142,6 +143,26 @@ export default function AcceptInvitation() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!invitation) return;
+
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(invitation.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast.success(`Un email de réinitialisation a été envoyé à ${invitation.email}`);
+    } catch (err: any) {
+      console.error('Error sending reset email:', err);
+      toast.error("Erreur lors de l'envoi de l'email de réinitialisation");
+    } finally {
+      setSendingReset(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -178,38 +199,65 @@ export default function AcceptInvitation() {
               </Button>
             </div>
           ) : existingAccount && invitation ? (
-            <form onSubmit={handleLoginWithExistingAccount} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={invitation.email} disabled className="bg-muted" />
-              </div>
+            <div className="space-y-4">
+              <form onSubmit={handleLoginWithExistingAccount} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={invitation.email} disabled className="bg-muted" />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Votre mot de passe existant"
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Votre mot de passe existant"
+                    required
+                  />
+                </div>
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connexion...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Se connecter
-                  </>
-                )}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connexion...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Se connecter
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="pt-4 border-t">
+                <p className="text-sm text-muted-foreground text-center mb-3">
+                  Mot de passe oublié ?
+                </p>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={handleForgotPassword}
+                  disabled={sendingReset}
+                >
+                  {sendingReset ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Réinitialiser mon mot de passe
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           ) : invitation ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
