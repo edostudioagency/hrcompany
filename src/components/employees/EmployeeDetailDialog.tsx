@@ -31,8 +31,10 @@ import {
   Briefcase,
   Eye,
   X,
+  Calendar,
 } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
+import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
 
 interface Employee {
   id: string;
@@ -366,10 +368,14 @@ export function EmployeeDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="contract" className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="contract" className="gap-2">
               <Briefcase className="h-4 w-4" />
               Contrat
+            </TabsTrigger>
+            <TabsTrigger value="leave" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Congés
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -466,6 +472,11 @@ export function EmployeeDetailDialog({
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Leave Tab */}
+          <TabsContent value="leave" className="space-y-4 mt-4">
+            <LeaveBalanceCard employeeId={employee.id} />
           </TabsContent>
 
           {/* Documents Tab */}
