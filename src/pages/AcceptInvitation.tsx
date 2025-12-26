@@ -37,18 +37,19 @@ export default function AcceptInvitation() {
       }
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('employees')
-          .select('id, email, first_name, last_name, status, invitation_token')
-          .eq('invitation_token', token)
-          .maybeSingle();
+        // Call the edge function to validate the token (bypasses RLS)
+        const { data, error: invokeError } = await supabase.functions.invoke('validate-invitation', {
+          body: { token },
+        });
 
-        if (fetchError) throw fetchError;
+        if (invokeError) {
+          console.error('Error invoking validate-invitation:', invokeError);
+          setError('Erreur lors de la validation de l\'invitation');
+          return;
+        }
 
-        if (!data) {
-          setError('Invitation invalide ou expirée');
-        } else if (data.status === 'active') {
-          setError('Ce compte a déjà été activé');
+        if (data.error) {
+          setError(data.error);
         } else {
           setInvitation(data);
         }
@@ -76,41 +77,37 @@ export default function AcceptInvitation() {
       return;
     }
 
-    if (!invitation) return;
+    if (!invitation || !token) return;
 
     setSubmitting(true);
 
     try {
-      // Create the user account - the DB trigger will auto-link to employee
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password,
-        options: {
-          data: {
-            first_name: invitation.first_name,
-            last_name: invitation.last_name,
-          },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
+      // Call the edge function to activate the account
+      const { data, error: invokeError } = await supabase.functions.invoke('activate-account', {
+        body: { token, password },
       });
 
-      if (signUpError) {
-        // Check if user already exists
-        if (signUpError.message?.includes('already registered')) {
-          setExistingAccount(true);
-          toast.info('Un compte existe déjà avec cette adresse email. Veuillez vous connecter.');
-          return;
-        }
-        throw signUpError;
+      if (invokeError) {
+        console.error('Error invoking activate-account:', invokeError);
+        toast.error('Erreur lors de l\'activation du compte');
+        return;
       }
 
-      if (authData.user) {
-        toast.success('Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
-        navigate('/auth');
+      if (data.error) {
+        if (data.existingAccount) {
+          setExistingAccount(true);
+          toast.info('Un compte existe déjà avec cette adresse email. Veuillez vous connecter.');
+        } else {
+          toast.error(data.error);
+        }
+        return;
       }
+
+      toast.success('Compte activé avec succès ! Vous pouvez maintenant vous connecter.');
+      navigate('/auth');
     } catch (err: any) {
-      console.error('Error creating account:', err);
-      toast.error('Erreur lors de la création du compte');
+      console.error('Error activating account:', err);
+      toast.error('Erreur lors de l\'activation du compte');
     } finally {
       setSubmitting(false);
     }
@@ -167,7 +164,7 @@ export default function AcceptInvitation() {
             {error
               ? error
               : existingAccount
-              ? `Un compte existe déjà pour ${invitation?.email}. Entrez votre mot de passe pour lier votre compte.`
+              ? `Un compte existe déjà pour ${invitation?.email}. Entrez votre mot de passe pour vous connecter.`
               : `Bienvenue ${invitation?.first_name} ! Créez votre mot de passe pour accéder à l'application.`}
           </CardDescription>
         </CardHeader>
@@ -208,18 +205,9 @@ export default function AcceptInvitation() {
                 ) : (
                   <>
                     <LogIn className="mr-2 h-4 w-4" />
-                    Se connecter et lier le compte
+                    Se connecter
                   </>
                 )}
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setExistingAccount(false)}
-              >
-                Créer un nouveau mot de passe
               </Button>
             </form>
           ) : invitation ? (
@@ -268,7 +256,7 @@ export default function AcceptInvitation() {
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Création en cours...
+                    Activation en cours...
                   </>
                 ) : (
                   <>

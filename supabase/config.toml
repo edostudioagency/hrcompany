@@ -2,3 +2,9 @@ project_id = "bsdccrcdfunhoempbzdl"
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.validate-invitation]
+verify_jwt = false
+
+[functions.activate-account]
+verify_jwt = false
