@@ -94,7 +94,6 @@ export function EmployeeEditDialog({
     email: '',
     phone: '',
     position: '',
-    hourly_rate: '',
   });
   
   // Contract state
@@ -112,7 +111,6 @@ export function EmployeeEditDialog({
         email: employee.email,
         phone: employee.phone || '',
         position: employee.position || '',
-        hourly_rate: employee.hourly_rate?.toString() || '',
       });
       setContractType(employee.contract_type || '');
       setStartDate(employee.contract_start_date ? new Date(employee.contract_start_date) : undefined);
@@ -170,7 +168,6 @@ export function EmployeeEditDialog({
           email: formData.email,
           phone: formData.phone || null,
           position: formData.position || null,
-          hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
         })
         .eq('id', employee.id);
 
@@ -365,23 +362,12 @@ export function EmployeeEditDialog({
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Poste</Label>
-                    <Input
-                      value={formData.position}
-                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Taux horaire (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.hourly_rate}
-                      onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Poste</Label>
+                  <Input
+                    value={formData.position}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  />
                 </div>
                 <Button onClick={handleSaveInfo} disabled={loading} className="w-full">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
