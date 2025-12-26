@@ -275,6 +275,50 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_balances: {
+        Row: {
+          annual_entitlement: number
+          balance: number | null
+          created_at: string
+          employee_id: string
+          id: string
+          type: string
+          updated_at: string
+          used: number
+          year: number
+        }
+        Insert: {
+          annual_entitlement?: number
+          balance?: number | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          type: string
+          updated_at?: string
+          used?: number
+          year: number
+        }
+        Update: {
+          annual_entitlement?: number
+          balance?: number | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          type?: string
+          updated_at?: string
+          used?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payslips: {
         Row: {
           created_at: string

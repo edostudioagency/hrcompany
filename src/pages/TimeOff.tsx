@@ -41,6 +41,10 @@ import { fr } from 'date-fns/locale';
 import { CalendarIcon, Check, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimeOffEditDialog } from '@/components/time-off/TimeOffEditDialog';
+import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
+import { LeaveEstimation } from '@/components/time-off/LeaveEstimation';
+import { useLeaveBalances } from '@/hooks/useLeaveBalances';
+import { calculateWorkingDays, LEAVE_TYPE_LABELS } from '@/lib/leave-calculator';
 
 interface TimeOffRequest {
   id: string;
@@ -60,9 +64,14 @@ interface TimeOffRequest {
 
 const typeLabels: Record<string, string> = {
   vacation: 'Congés payés',
+  conge_paye: 'Congés payés',
   sick: 'Maladie',
+  maladie: 'Maladie',
   personal: 'Personnel',
+  rtt: 'RTT',
+  sans_solde: 'Sans solde',
   other: 'Autre',
+  autre: 'Autre',
 };
 
 const statusBadge = (status: string) => {
@@ -89,34 +98,35 @@ const TimeOff = () => {
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
   const [editingRequest, setEditingRequest] = useState<TimeOffRequest | null>(null);
 
+  const { updateBalance, refetch: refetchBalances } = useLeaveBalances(currentEmployeeId || undefined);
+
   // Form state
   const [formData, setFormData] = useState({
-    type: 'vacation',
+    type: 'conge_paye',
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
     reason: '',
-    employeeId: '', // For managers/admins to select an employee
+    employeeId: '',
   });
 
   const isManagerOrAdmin = role === 'manager' || role === 'admin';
-  
-  // Allow managers/admins to create requests even without being linked to an employee
   const canCreateRequest = isManagerOrAdmin || currentEmployeeId;
+
+  const selectedEmployeeId = isManagerOrAdmin 
+    ? (formData.employeeId || currentEmployeeId) 
+    : currentEmployeeId;
 
   const fetchData = async () => {
     try {
-      // Fetch employees
       const { data: empData } = await supabase
         .from('employees')
         .select('id, first_name, last_name, user_id');
       
       setEmployees(empData || []);
       
-      // Find current user's employee record
       const currentEmp = empData?.find((e) => e.user_id === user?.id);
       setCurrentEmployeeId(currentEmp?.id || null);
 
-      // Fetch time off requests with employee info
       const { data, error } = await supabase
         .from('time_off_requests')
         .select(`
@@ -140,7 +150,6 @@ const TimeOff = () => {
   }, [user?.id]);
 
   const handleSubmit = async () => {
-    // Determine employee_id based on role
     const targetEmployeeId = isManagerOrAdmin 
       ? (formData.employeeId || currentEmployeeId) 
       : currentEmployeeId;
@@ -169,7 +178,7 @@ const TimeOff = () => {
 
       toast.success('Demande soumise avec succès');
       setIsFormOpen(false);
-      setFormData({ type: 'vacation', startDate: undefined, endDate: undefined, reason: '', employeeId: '' });
+      setFormData({ type: 'conge_paye', startDate: undefined, endDate: undefined, reason: '', employeeId: '' });
       fetchData();
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -187,6 +196,20 @@ const TimeOff = () => {
         .eq('id', request.id);
 
       if (error) throw error;
+
+      // Calculate working days and update balance
+      const daysUsed = calculateWorkingDays(
+        new Date(request.start_date),
+        new Date(request.end_date),
+        'full_day'
+      );
+
+      try {
+        await updateBalance(request.employee_id, request.type, daysUsed, 'add');
+      } catch (balanceError) {
+        console.error('Error updating balance:', balanceError);
+        // Don't fail the approval if balance update fails
+      }
 
       // Send notification email
       if (request.employee?.email) {
@@ -206,6 +229,7 @@ const TimeOff = () => {
 
       toast.success('Demande approuvée');
       fetchData();
+      refetchBalances();
     } catch (error) {
       console.error('Error approving request:', error);
       toast.error('Erreur lors de l\'approbation');
@@ -256,6 +280,11 @@ const TimeOff = () => {
       subtitle={`${pendingRequests.length} demande(s) en attente`}
     >
       <div className="space-y-6">
+        {/* Leave Balance Card for current employee */}
+        {currentEmployeeId && (
+          <LeaveBalanceCard employeeId={currentEmployeeId} />
+        )}
+
         <Tabs defaultValue={isManagerOrAdmin ? 'pending' : 'all'}>
           <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
             <TabsList>
@@ -279,7 +308,7 @@ const TimeOff = () => {
                   Nouvelle demande
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[550px]">
                 <DialogHeader>
                   <DialogTitle>Nouvelle demande de congé</DialogTitle>
                   <DialogDescription>
@@ -314,10 +343,11 @@ const TimeOff = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="vacation">Congés payés</SelectItem>
-                        <SelectItem value="sick">Maladie</SelectItem>
-                        <SelectItem value="personal">Personnel</SelectItem>
-                        <SelectItem value="other">Autre</SelectItem>
+                        <SelectItem value="conge_paye">Congés payés</SelectItem>
+                        <SelectItem value="rtt">RTT</SelectItem>
+                        <SelectItem value="maladie">Maladie</SelectItem>
+                        <SelectItem value="sans_solde">Sans solde</SelectItem>
+                        <SelectItem value="autre">Autre</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -368,6 +398,7 @@ const TimeOff = () => {
                             selected={formData.endDate}
                             onSelect={(date) => setFormData({ ...formData, endDate: date })}
                             locale={fr}
+                            disabled={(date) => formData.startDate ? date < formData.startDate : false}
                           />
                         </PopoverContent>
                       </Popover>
@@ -381,6 +412,17 @@ const TimeOff = () => {
                       placeholder="Précisez le motif de votre demande..."
                     />
                   </div>
+
+                  {/* Leave Estimation */}
+                  {selectedEmployeeId && (
+                    <LeaveEstimation
+                      employeeId={selectedEmployeeId}
+                      startDate={formData.startDate}
+                      endDate={formData.endDate}
+                      leaveType={formData.type}
+                      partOfDay="full_day"
+                    />
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsFormOpen(false)}>
