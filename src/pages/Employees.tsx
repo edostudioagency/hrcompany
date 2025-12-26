@@ -83,17 +83,25 @@ const DAYS_OF_WEEK = [
   { value: 0, label: 'Dimanche' },
 ];
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'active':
-      return <Badge variant="default" className="bg-green-100 text-green-800">Actif</Badge>;
-    case 'inactive':
-      return <Badge variant="secondary">Inactif</Badge>;
-    case 'pending':
-      return <Badge variant="outline" className="border-yellow-500 text-yellow-700">En attente</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
+const getStatusBadge = (status: string, hasAccount: boolean) => {
+  if (status === 'active' && hasAccount) {
+    return (
+      <Badge variant="default" className="bg-green-100 text-green-800 gap-1">
+        <UserCheck className="w-3 h-3" />
+        Actif
+      </Badge>
+    );
   }
+  if (status === 'inactive') {
+    return <Badge variant="secondary">Inactif</Badge>;
+  }
+  // Pending or active without account
+  return (
+    <Badge variant="outline" className="border-yellow-500 text-yellow-700 gap-1">
+      <UserX className="w-3 h-3" />
+      En attente
+    </Badge>
+  );
 };
 
 const getContractTypeBadge = (type: string | null) => {
@@ -385,14 +393,13 @@ export default function EmployeesPage() {
                     <TableHead>Poste</TableHead>
                     <TableHead>Contrat</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Compte</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEmployees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Aucun employé trouvé
                       </TableCell>
                     </TableRow>
@@ -417,25 +424,7 @@ export default function EmployeesPage() {
                         <TableCell>{employee.email}</TableCell>
                         <TableCell>{employee.position || '-'}</TableCell>
                         <TableCell>{getContractTypeBadge(employee.contract_type)}</TableCell>
-                        <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center">
-                                {employee.user_id ? (
-                                  <UserCheck className="w-5 h-5 text-green-600" />
-                                ) : (
-                                  <UserX className="w-5 h-5 text-muted-foreground" />
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {employee.user_id
-                                ? 'Compte utilisateur lié'
-                                : 'Aucun compte utilisateur lié'}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
+                        <TableCell>{getStatusBadge(employee.status, !!employee.user_id)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
                             <Button
