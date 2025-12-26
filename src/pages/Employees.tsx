@@ -62,6 +62,7 @@ interface Employee {
   contract_hours: number | null;
   gross_salary: number | null;
   invitation_sent_at: string | null;
+  invitation_token: string | null;
   salary_type: string | null;
   created_at: string;
 }
