@@ -58,6 +58,8 @@ interface Employee {
   contract_type: string | null;
   contract_start_date: string | null;
   contract_end_date: string | null;
+  contract_hours: number | null;
+  gross_salary: number | null;
   created_at: string;
 }
 
