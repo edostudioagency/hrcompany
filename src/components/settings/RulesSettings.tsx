@@ -199,8 +199,8 @@ export function RulesSettings() {
               value={formData.leave_calculation_mode}
               onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') => {
                 const defaults = value === 'jours_ouvres' 
-                  ? { annual_paid_leave_days: 25, paid_leave_per_month: 2.08 }
-                  : { annual_paid_leave_days: 30, paid_leave_per_month: 2.5 };
+                  ? { annual_paid_leave_days: 25, paid_leave_per_month: 2.08, sick_leave_accrual_rate: 1.67 }
+                  : { annual_paid_leave_days: 30, paid_leave_per_month: 2.5, sick_leave_accrual_rate: 2 };
                 setFormData({ ...formData, leave_calculation_mode: value, ...defaults });
               }}
               className="flex flex-col space-y-2"
