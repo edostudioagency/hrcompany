@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -11,13 +11,23 @@ import {
   FileText,
   Building2,
   Settings,
+  ChevronsUpDown,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -29,26 +39,15 @@ const navigation = [
   { name: 'Échanges', href: '/swaps', icon: ArrowLeftRight, hasBadge: true },
   { name: 'Commissions', href: '/commissions', icon: Euro, managerOnly: true },
   { name: 'Fiches de paie', href: '/payslips', icon: FileText },
-  { name: 'Paramètres', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useApp();
   const { user, role } = useAuth();
-  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  const { currentCompany, companies, hasMultipleCompanies, switchCompany } = useCompany();
   const [badgeCounts, setBadgeCounts] = useState({ timeOff: 0, swaps: 0 });
-
-  useEffect(() => {
-    if (user) {
-      supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', user.id)
-        .maybeSingle()
-        .then(({ data }) => setProfile(data));
-    }
-  }, [user]);
 
   useEffect(() => {
     const fetchBadgeCounts = async () => {
@@ -76,12 +75,13 @@ export function Sidebar() {
 
   const isManagerOrAdmin = role === 'admin' || role === 'manager';
   const isAdmin = role === 'admin';
-  const displayName = profile?.first_name && profile?.last_name 
-    ? `${profile.first_name} ${profile.last_name}` 
-    : user?.email?.split('@')[0] || '';
-  const initials = profile?.first_name && profile?.last_name
-    ? `${profile.first_name[0]}${profile.last_name[0]}`
-    : user?.email?.[0]?.toUpperCase() || '?';
+  
+  const companyName = currentCompany?.name || 'Mon entreprise';
+  const companyInitials = companyName
+    .split(' ')
+    .slice(0, 2)
+    .map(word => word[0]?.toUpperCase())
+    .join('');
 
   return (
     <aside
@@ -114,8 +114,6 @@ export function Sidebar() {
         {navigation.map((item) => {
           // Hide manager-only items for employees
           if (item.managerOnly && !isManagerOrAdmin) return null;
-          // Hide admin-only items for non-admins
-          if ((item as any).adminOnly && !isAdmin) return null;
 
           const isActive = location.pathname === item.href;
           const badgeCount = item.hasBadge && isManagerOrAdmin ? getBadgeCount(item.href) : 0;
@@ -151,24 +149,105 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom section */}
+      {/* Bottom section - Company switcher */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
-        {sidebarOpen && user && (
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
-              <span className="text-sm font-medium text-sidebar-foreground">
-                {initials}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {displayName}
-              </p>
-              <p className="text-xs text-sidebar-muted capitalize">
-                {role || 'employee'}
-              </p>
-            </div>
-          </div>
+        {sidebarOpen ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left">
+                <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-sidebar-primary-foreground">
+                    {companyInitials}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {companyName}
+                  </p>
+                  <p className="text-xs text-sidebar-muted capitalize">
+                    {role || 'employee'}
+                  </p>
+                </div>
+                <ChevronsUpDown className="w-4 h-4 text-sidebar-muted flex-shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {hasMultipleCompanies && (
+                <>
+                  {companies.map((company) => (
+                    <DropdownMenuItem
+                      key={company.id}
+                      onClick={() => switchCompany(company.id)}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                          <span className="text-xs font-medium text-primary">
+                            {company.name.slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="truncate">{company.name}</span>
+                      </div>
+                      {currentCompany?.id === company.id && (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Paramètres
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-center py-2">
+                <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                  <span className="text-sm font-semibold text-sidebar-primary-foreground">
+                    {companyInitials}
+                  </span>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right" className="w-56">
+              {hasMultipleCompanies && (
+                <>
+                  {companies.map((company) => (
+                    <DropdownMenuItem
+                      key={company.id}
+                      onClick={() => switchCompany(company.id)}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                          <span className="text-xs font-medium text-primary">
+                            {company.name.slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="truncate">{company.name}</span>
+                      </div>
+                      {currentCompany?.id === company.id && (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Paramètres
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
         <Separator className="bg-sidebar-border" />
