@@ -33,15 +33,26 @@ export function useLeaveBalances(employeeId?: string) {
       // If employeeId is provided, use it directly
       // Otherwise, find the employee record for the current user
       let targetEmployeeId = employeeId;
+      let isExecutive = false;
 
       if (!targetEmployeeId && user?.id) {
         const { data: empData } = await supabase
           .from('employees')
-          .select('id')
+          .select('id, is_executive')
           .eq('user_id', user.id)
           .maybeSingle();
 
         targetEmployeeId = empData?.id;
+        isExecutive = empData?.is_executive || false;
+      } else if (targetEmployeeId) {
+        // Fetch is_executive status for the provided employeeId
+        const { data: empData } = await supabase
+          .from('employees')
+          .select('is_executive')
+          .eq('id', targetEmployeeId)
+          .maybeSingle();
+
+        isExecutive = empData?.is_executive || false;
       }
 
       if (!targetEmployeeId) {
@@ -58,7 +69,15 @@ export function useLeaveBalances(employeeId?: string) {
 
       if (fetchError) throw fetchError;
 
-      setBalances(data || []);
+      // Filter out RTT for non-executives
+      const filteredData = (data || []).filter(balance => {
+        if (balance.type === 'rtt' && !isExecutive) {
+          return false;
+        }
+        return true;
+      });
+
+      setBalances(filteredData);
     } catch (err) {
       console.error('Error fetching leave balances:', err);
       setError('Erreur lors du chargement des soldes de congés');
