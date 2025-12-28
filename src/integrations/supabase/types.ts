@@ -172,6 +172,7 @@ export type Database = {
           created_at: string
           default_work_hours_per_day: number | null
           id: string
+          leave_calculation_mode: string | null
           paid_leave_per_month: number | null
           rtt_days_per_year: number | null
           sick_leave_accrual: boolean | null
@@ -188,6 +189,7 @@ export type Database = {
           created_at?: string
           default_work_hours_per_day?: number | null
           id?: string
+          leave_calculation_mode?: string | null
           paid_leave_per_month?: number | null
           rtt_days_per_year?: number | null
           sick_leave_accrual?: boolean | null
@@ -204,6 +206,7 @@ export type Database = {
           created_at?: string
           default_work_hours_per_day?: number | null
           id?: string
+          leave_calculation_mode?: string | null
           paid_leave_per_month?: number | null
           rtt_days_per_year?: number | null
           sick_leave_accrual?: boolean | null
