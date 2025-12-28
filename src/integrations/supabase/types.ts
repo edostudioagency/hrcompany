@@ -85,6 +85,142 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          name: string
+          phone: string | null
+          siret: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          name: string
+          phone?: string | null
+          siret?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          name?: string
+          phone?: string | null
+          siret?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_locations: {
+        Row: {
+          address: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          minimum_employees: number | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          minimum_employees?: number | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          minimum_employees?: number | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_locations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_settings: {
+        Row: {
+          accountant_email: string | null
+          accountant_notification_days: number[] | null
+          allow_shift_swaps: boolean | null
+          annual_paid_leave_days: number | null
+          company_id: string | null
+          created_at: string
+          default_work_hours_per_day: number | null
+          id: string
+          paid_leave_per_month: number | null
+          rtt_days_per_year: number | null
+          sick_leave_accrual: boolean | null
+          sick_leave_accrual_rate: number | null
+          updated_at: string
+          weekly_hours: number | null
+        }
+        Insert: {
+          accountant_email?: string | null
+          accountant_notification_days?: number[] | null
+          allow_shift_swaps?: boolean | null
+          annual_paid_leave_days?: number | null
+          company_id?: string | null
+          created_at?: string
+          default_work_hours_per_day?: number | null
+          id?: string
+          paid_leave_per_month?: number | null
+          rtt_days_per_year?: number | null
+          sick_leave_accrual?: boolean | null
+          sick_leave_accrual_rate?: number | null
+          updated_at?: string
+          weekly_hours?: number | null
+        }
+        Update: {
+          accountant_email?: string | null
+          accountant_notification_days?: number[] | null
+          allow_shift_swaps?: boolean | null
+          annual_paid_leave_days?: number | null
+          company_id?: string | null
+          created_at?: string
+          default_work_hours_per_day?: number | null
+          id?: string
+          paid_leave_per_month?: number | null
+          rtt_days_per_year?: number | null
+          sick_leave_accrual?: boolean | null
+          sick_leave_accrual_rate?: number | null
+          updated_at?: string
+          weekly_hours?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_notifications: {
         Row: {
           created_at: string
