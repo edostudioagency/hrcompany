@@ -11,10 +11,9 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Settings() {
-  const { currentCompany, companies } = useCompany();
+  const { currentCompany } = useCompany();
   const { role } = useAuth();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [isCreateMode, setIsCreateMode] = useState(false);
 
   const isAdmin = role === 'admin';
 
@@ -26,24 +25,6 @@ export default function Settings() {
 
   const handleSelectCompany = (companyId: string | null) => {
     setSelectedCompanyId(companyId);
-    setIsCreateMode(false);
-  };
-
-  const handleCreateNew = () => {
-    setIsCreateMode(true);
-    setSelectedCompanyId(null);
-  };
-
-  const handleSaved = () => {
-    setIsCreateMode(false);
-    if (!selectedCompanyId && companies.length > 0) {
-      setSelectedCompanyId(companies[companies.length - 1]?.id || null);
-    }
-  };
-
-  const handleCancelCreate = () => {
-    setIsCreateMode(false);
-    setSelectedCompanyId(currentCompany?.id || null);
   };
 
   return (
@@ -59,7 +40,6 @@ export default function Settings() {
           <CompanySelector
             selectedCompanyId={selectedCompanyId}
             onSelectCompany={handleSelectCompany}
-            onCreateNew={handleCreateNew}
           />
         )}
 
@@ -84,12 +64,7 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="company">
-            <CompanyInfoForm
-              companyId={selectedCompanyId}
-              isCreateMode={isCreateMode}
-              onCancel={handleCancelCreate}
-              onSaved={handleSaved}
-            />
+            <CompanyInfoForm companyId={selectedCompanyId} />
           </TabsContent>
 
           <TabsContent value="locations">

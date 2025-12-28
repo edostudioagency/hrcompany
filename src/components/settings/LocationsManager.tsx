@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, MapPin, Users } from 'lucide-react';
 
@@ -39,9 +40,9 @@ interface Location {
 }
 
 export function LocationsManager() {
+  const { currentCompany } = useCompany();
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
@@ -53,31 +54,24 @@ export function LocationsManager() {
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentCompany?.id) {
+      fetchData();
+    }
+  }, [currentCompany?.id]);
 
   const fetchData = async () => {
+    if (!currentCompany?.id) return;
+    
+    setLoading(true);
     try {
-      // First get the company
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
+      const { data: locationsData, error } = await supabase
+        .from('company_locations')
+        .select('*')
+        .eq('company_id', currentCompany.id)
+        .order('name');
 
-      if (companyData) {
-        setCompanyId(companyData.id);
-
-        // Then get locations for this company
-        const { data: locationsData, error } = await supabase
-          .from('company_locations')
-          .select('*')
-          .eq('company_id', companyData.id)
-          .order('name');
-
-        if (error) throw error;
-        setLocations(locationsData || []);
-      }
+      if (error) throw error;
+      setLocations(locationsData || []);
     } catch (error) {
       console.error('Error fetching locations:', error);
       toast.error('Erreur lors du chargement des locaux');
@@ -110,8 +104,8 @@ export function LocationsManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) {
-      toast.error('Veuillez d\'abord créer une entreprise');
+    if (!currentCompany?.id) {
+      toast.error('Veuillez d\'abord sélectionner une entreprise');
       return;
     }
 
@@ -135,7 +129,7 @@ export function LocationsManager() {
         const { error } = await supabase
           .from('company_locations')
           .insert({
-            company_id: companyId,
+            company_id: currentCompany.id,
             name: formData.name,
             address: formData.address || null,
             minimum_employees: formData.minimum_employees,
@@ -182,13 +176,13 @@ export function LocationsManager() {
     );
   }
 
-  if (!companyId) {
+  if (!currentCompany?.id) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <MapPin className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground">
-            Veuillez d'abord créer votre entreprise dans l'onglet "Entreprise"
+            Veuillez d'abord sélectionner une entreprise
           </p>
         </CardContent>
       </Card>

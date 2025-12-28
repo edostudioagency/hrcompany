@@ -3,30 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Save, X } from 'lucide-react';
-import { useCompany } from '@/contexts/CompanyContext';
-import { useAuth } from '@/hooks/useAuth';
+import { Loader2, Save, Building2 } from 'lucide-react';
 
 interface CompanyInfoFormProps {
   companyId?: string | null;
-  isCreateMode?: boolean;
-  onCancel?: () => void;
-  onSaved?: () => void;
 }
 
-export function CompanyInfoForm({ 
-  companyId, 
-  isCreateMode = false,
-  onCancel,
-  onSaved 
-}: CompanyInfoFormProps) {
-  const [loading, setLoading] = useState(!isCreateMode);
+export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { refreshCompanies, switchCompany } = useCompany();
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     legal_name: '',
@@ -37,20 +24,12 @@ export function CompanyInfoForm({
   });
 
   useEffect(() => {
-    if (companyId && !isCreateMode) {
+    if (companyId) {
       fetchCompany(companyId);
-    } else if (isCreateMode) {
-      setFormData({
-        name: '',
-        legal_name: '',
-        siret: '',
-        address: '',
-        phone: '',
-        email: '',
-      });
+    } else {
       setLoading(false);
     }
-  }, [companyId, isCreateMode]);
+  }, [companyId]);
 
   const fetchCompany = async (id: string) => {
     setLoading(true);
@@ -84,6 +63,11 @@ export function CompanyInfoForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!companyId) {
+      toast.error('Aucune entreprise sélectionnée');
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast.error('Le nom de l\'entreprise est requis');
       return;
@@ -92,72 +76,20 @@ export function CompanyInfoForm({
     setSaving(true);
 
     try {
-      if (isCreateMode) {
-        // Create new company
-        const { data: newCompany, error: insertError } = await supabase
-          .from('companies')
-          .insert({
-            name: formData.name,
-            legal_name: formData.legal_name || null,
-            siret: formData.siret || null,
-            address: formData.address || null,
-            phone: formData.phone || null,
-            email: formData.email || null,
-          })
-          .select()
-          .single();
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name: formData.name,
+          legal_name: formData.legal_name || null,
+          siret: formData.siret || null,
+          address: formData.address || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+        })
+        .eq('id', companyId);
 
-        if (insertError) throw insertError;
-
-        // Link admin to the new company
-        if (user) {
-          const { error: linkError } = await supabase
-            .from('user_companies')
-            .insert({
-              user_id: user.id,
-              company_id: newCompany.id,
-              is_default: false,
-            });
-
-          if (linkError) {
-            console.error('Error linking user to company:', linkError);
-          }
-        }
-
-        // Create default company settings
-        const { error: settingsError } = await supabase
-          .from('company_settings')
-          .insert({
-            company_id: newCompany.id,
-          });
-
-        if (settingsError) {
-          console.error('Error creating company settings:', settingsError);
-        }
-
-        toast.success('Entreprise créée');
-        await refreshCompanies();
-        switchCompany(newCompany.id);
-        onSaved?.();
-      } else if (companyId) {
-        // Update existing company
-        const { error } = await supabase
-          .from('companies')
-          .update({
-            name: formData.name,
-            legal_name: formData.legal_name || null,
-            siret: formData.siret || null,
-            address: formData.address || null,
-            phone: formData.phone || null,
-            email: formData.email || null,
-          })
-          .eq('id', companyId);
-
-        if (error) throw error;
-        toast.success('Informations mises à jour');
-        await refreshCompanies();
-        onSaved?.();
-      }
+      if (error) throw error;
+      toast.success('Entreprise mise à jour');
     } catch (error) {
       console.error('Error saving company:', error);
       toast.error('Erreur lors de la sauvegarde');
@@ -176,27 +108,26 @@ export function CompanyInfoForm({
     );
   }
 
+  if (!companyId) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+          <Building2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <p className="text-muted-foreground">
+            Sélectionnez une entreprise à modifier
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>
-              {isCreateMode ? 'Nouvelle entreprise' : 'Informations de l\'entreprise'}
-            </CardTitle>
-            <CardDescription>
-              {isCreateMode 
-                ? 'Créez une nouvelle entreprise à gérer'
-                : 'Gérez les informations générales de votre entreprise'
-              }
-            </CardDescription>
-          </div>
-          {isCreateMode && onCancel && (
-            <Button variant="ghost" size="icon" onClick={onCancel}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        <CardTitle>Informations de l'entreprise</CardTitle>
+        <CardDescription>
+          Modifiez les informations de votre entreprise
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -207,7 +138,7 @@ export function CompanyInfoForm({
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Mon Entreprise"
+                placeholder="Ma Société"
                 required
               />
             </div>
@@ -217,22 +148,12 @@ export function CompanyInfoForm({
                 id="legal_name"
                 value={formData.legal_name}
                 onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })}
-                placeholder="Mon Entreprise SAS"
+                placeholder="MA SOCIÉTÉ SAS"
               />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="siret">SIRET</Label>
-              <Input
-                id="siret"
-                value={formData.siret}
-                onChange={(e) => setFormData({ ...formData, siret: e.target.value })}
-                placeholder="123 456 789 00012"
-                maxLength={17}
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -240,16 +161,14 @@ export function CompanyInfoForm({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="contact@entreprise.fr"
+                placeholder="contact@masociete.fr"
               />
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Téléphone</Label>
               <Input
                 id="phone"
+                type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="01 23 45 67 89"
@@ -259,28 +178,33 @@ export function CompanyInfoForm({
 
           <div className="space-y-2">
             <Label htmlFor="address">Adresse</Label>
-            <Textarea
+            <Input
               id="address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="123 Rue de la Paix&#10;75001 Paris"
-              rows={3}
+              placeholder="123 rue de la Paix, 75001 Paris"
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            {isCreateMode && onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Annuler
-              </Button>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="siret">SIRET</Label>
+            <Input
+              id="siret"
+              value={formData.siret}
+              onChange={(e) => setFormData({ ...formData, siret: e.target.value })}
+              placeholder="123 456 789 00001"
+              maxLength={17}
+            />
+          </div>
+
+          <div className="flex justify-end">
             <Button type="submit" disabled={saving}>
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              {isCreateMode ? 'Créer' : 'Enregistrer'}
+              Enregistrer
             </Button>
           </div>
         </form>

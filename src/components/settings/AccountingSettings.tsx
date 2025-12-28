@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { Loader2, Save, Calculator, Mail } from 'lucide-react';
 
@@ -18,9 +19,9 @@ interface CompanySettings {
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export function AccountingSettings() {
+  const { currentCompany } = useCompany();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [formData, setFormData] = useState({
     accountant_email: '',
@@ -28,37 +29,32 @@ export function AccountingSettings() {
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentCompany?.id) {
+      fetchData();
+    }
+  }, [currentCompany?.id]);
 
   const fetchData = async () => {
+    if (!currentCompany?.id) return;
+    
+    setLoading(true);
     try {
-      // First get the company
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('id')
-        .limit(1)
+      const { data: settingsData, error } = await supabase
+        .from('company_settings')
+        .select('id, company_id, accountant_email, accountant_notification_days')
+        .eq('company_id', currentCompany.id)
         .maybeSingle();
 
-      if (companyData) {
-        setCompanyId(companyData.id);
+      if (error && error.code !== 'PGRST116') throw error;
 
-        // Then get settings
-        const { data: settingsData, error } = await supabase
-          .from('company_settings')
-          .select('id, company_id, accountant_email, accountant_notification_days')
-          .eq('company_id', companyData.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') throw error;
-
-        if (settingsData) {
-          setSettings(settingsData);
-          setFormData({
-            accountant_email: settingsData.accountant_email || '',
-            accountant_notification_days: settingsData.accountant_notification_days || [1],
-          });
-        }
+      if (settingsData) {
+        setSettings(settingsData);
+        setFormData({
+          accountant_email: settingsData.accountant_email || '',
+          accountant_notification_days: settingsData.accountant_notification_days || [1],
+        });
+      } else {
+        setSettings(null);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -85,7 +81,7 @@ export function AccountingSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) {
+    if (!currentCompany?.id) {
       toast.error('Veuillez d\'abord créer une entreprise');
       return;
     }
@@ -108,7 +104,7 @@ export function AccountingSettings() {
       } else {
         const { data, error } = await supabase
           .from('company_settings')
-          .insert({ ...updateData, company_id: companyId })
+          .insert({ ...updateData, company_id: currentCompany.id })
           .select()
           .single();
 
@@ -134,13 +130,13 @@ export function AccountingSettings() {
     );
   }
 
-  if (!companyId) {
+  if (!currentCompany?.id) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <Calculator className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground">
-            Veuillez d'abord créer votre entreprise dans l'onglet "Entreprise"
+            Veuillez d'abord sélectionner une entreprise
           </p>
         </CardContent>
       </Card>

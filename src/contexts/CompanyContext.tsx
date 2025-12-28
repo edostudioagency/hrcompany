@@ -13,6 +13,7 @@ interface CompanyContextType {
   companies: Company[];
   isLoading: boolean;
   hasMultipleCompanies: boolean;
+  companyNotifications: Record<string, number>;
   switchCompany: (companyId: string) => void;
   refreshCompanies: () => Promise<void>;
   addCompany: (company: Company) => void;
@@ -25,6 +26,52 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [companyNotifications, setCompanyNotifications] = useState<Record<string, number>>({});
+
+  const fetchNotifications = useCallback(async (companyIds: string[]) => {
+    if (companyIds.length === 0) return;
+
+    try {
+      // Count pending time_off_requests per company
+      const { data: timeOffData } = await supabase
+        .from('time_off_requests')
+        .select('employee_id, employees!inner(company_id)')
+        .eq('status', 'pending');
+
+      // Count pending shift_swap_requests per company
+      const { data: swapData } = await supabase
+        .from('shift_swap_requests')
+        .select('requester_id, employees!shift_swap_requests_requester_id_fkey(company_id)')
+        .eq('status', 'pending');
+
+      const notificationCounts: Record<string, number> = {};
+
+      // Initialize counts
+      companyIds.forEach(id => {
+        notificationCounts[id] = 0;
+      });
+
+      // Count time off requests
+      timeOffData?.forEach((request: any) => {
+        const companyId = request.employees?.company_id;
+        if (companyId && notificationCounts[companyId] !== undefined) {
+          notificationCounts[companyId]++;
+        }
+      });
+
+      // Count swap requests
+      swapData?.forEach((request: any) => {
+        const companyId = request.employees?.company_id;
+        if (companyId && notificationCounts[companyId] !== undefined) {
+          notificationCounts[companyId]++;
+        }
+      });
+
+      setCompanyNotifications(notificationCounts);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, []);
 
   const fetchCompanies = useCallback(async () => {
     if (!user) {
@@ -68,6 +115,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           }
           
           setCurrentCompany(selectedCompany);
+          
+          // Fetch notifications for all companies
+          fetchNotifications(companyList.map(c => c.id));
+          
           setIsLoading(false);
           return;
         }
@@ -84,6 +135,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         const company = employee.companies as unknown as Company;
         setCompanies([company]);
         setCurrentCompany(company);
+        fetchNotifications([company.id]);
       } else {
         // Try to get any company for admins/managers
         if (role === 'admin' || role === 'manager') {
@@ -99,6 +151,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
               ? allCompanies.find(c => c.id === savedCompanyId) || allCompanies[0]
               : allCompanies[0];
             setCurrentCompany(selectedCompany);
+            fetchNotifications(allCompanies.map(c => c.id));
           }
         }
       }
@@ -107,7 +160,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, role]);
+  }, [user, role, fetchNotifications]);
 
   useEffect(() => {
     fetchCompanies();
@@ -136,6 +189,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         companies,
         isLoading,
         hasMultipleCompanies: companies.length > 1,
+        companyNotifications,
         switchCompany,
         refreshCompanies,
         addCompany,

@@ -11,7 +11,7 @@ import {
   FileText,
   Building2,
   Settings,
-  ChevronsUpDown,
+  Plus,
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,12 +22,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -46,8 +44,9 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useApp();
   const { user, role } = useAuth();
-  const { currentCompany, companies, hasMultipleCompanies, switchCompany } = useCompany();
+  const { currentCompany, companies, hasMultipleCompanies, switchCompany, companyNotifications } = useCompany();
   const [badgeCounts, setBadgeCounts] = useState({ timeOff: 0, swaps: 0 });
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   useEffect(() => {
     const fetchBadgeCounts = async () => {
@@ -82,6 +81,23 @@ export function Sidebar() {
     .slice(0, 2)
     .map(word => word[0]?.toUpperCase())
     .join('');
+
+  const currentCompanyNotifications = currentCompany ? (companyNotifications[currentCompany.id] || 0) : 0;
+
+  const handleCompanySwitch = (companyId: string) => {
+    switchCompany(companyId);
+    setPopoverOpen(false);
+  };
+
+  const handleCreateCompany = () => {
+    setPopoverOpen(false);
+    navigate('/company/new');
+  };
+
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/settings');
+  };
 
   return (
     <aside
@@ -149,105 +165,248 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom section - Company switcher */}
+      {/* Bottom section - Company switcher with notifications */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
         {sidebarOpen ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left">
-                <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-sidebar-primary-foreground">
-                    {companyInitials}
-                  </span>
+          <div className="flex items-center gap-2">
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left">
+                  <div className="relative">
+                    <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-semibold text-sidebar-primary-foreground">
+                        {companyInitials}
+                      </span>
+                    </div>
+                    {currentCompanyNotifications > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full flex items-center justify-center text-[10px] text-destructive-foreground font-medium">
+                        {currentCompanyNotifications > 9 ? '9+' : currentCompanyNotifications}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
+                      {companyName}
+                    </p>
+                    <p className="text-xs text-sidebar-muted capitalize">
+                      {role || 'employee'}
+                    </p>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="top" className="w-72 p-0">
+                <div className="p-3 border-b">
+                  <p className="text-sm font-medium text-muted-foreground">Entreprise active</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
-                    {companyName}
-                  </p>
-                  <p className="text-xs text-sidebar-muted capitalize">
-                    {role || 'employee'}
-                  </p>
-                </div>
-                <ChevronsUpDown className="w-4 h-4 text-sidebar-muted flex-shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              {hasMultipleCompanies && (
-                <>
-                  {companies.map((company) => (
-                    <DropdownMenuItem
-                      key={company.id}
-                      onClick={() => switchCompany(company.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-medium text-primary">
-                            {company.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        </div>
-                        <span className="truncate">{company.name}</span>
+                
+                <div className="p-2">
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
+                    <div className="relative">
+                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <span className="text-xs font-semibold text-primary-foreground">
+                          {companyInitials}
+                        </span>
                       </div>
-                      {currentCompany?.id === company.id && (
-                        <Check className="w-4 h-4 text-primary" />
+                      {currentCompanyNotifications > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
+                          {currentCompanyNotifications}
+                        </span>
                       )}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {isAdmin && (
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Paramètres
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{currentCompany?.name}</p>
+                    </div>
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                </div>
+
+                {hasMultipleCompanies && (
+                  <>
+                    <div className="px-3 py-2 border-t">
+                      <p className="text-sm font-medium text-muted-foreground">Autres entreprises</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {companies
+                        .filter(c => c.id !== currentCompany?.id)
+                        .map((company) => {
+                          const notifCount = companyNotifications[company.id] || 0;
+                          const initials = company.name
+                            .split(' ')
+                            .slice(0, 2)
+                            .map(word => word[0]?.toUpperCase())
+                            .join('');
+                          
+                          return (
+                            <button
+                              key={company.id}
+                              onClick={() => handleCompanySwitch(company.id)}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                            >
+                              <div className="relative">
+                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    {initials}
+                                  </span>
+                                </div>
+                                {notifCount > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
+                                    {notifCount}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm truncate">{company.name}</p>
+                                {notifCount > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {notifCount} demande{notifCount > 1 ? 's' : ''} en attente
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </>
+                )}
+
+                {isAdmin && (
+                  <>
+                    <div className="p-2 border-t">
+                      <button
+                        onClick={handleCreateCompany}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                          <Plus className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm font-medium">Créer une nouvelle structure</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSettingsClick}
+                className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent flex-shrink-0"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center justify-center py-2">
-                <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                  <span className="text-sm font-semibold text-sidebar-primary-foreground">
-                    {companyInitials}
-                  </span>
+          <div className="flex flex-col items-center gap-2">
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button className="relative">
+                  <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                    <span className="text-sm font-semibold text-sidebar-primary-foreground">
+                      {companyInitials}
+                    </span>
+                  </div>
+                  {currentCompanyNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full flex items-center justify-center text-[10px] text-destructive-foreground font-medium">
+                      {currentCompanyNotifications > 9 ? '9+' : currentCompanyNotifications}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="right" className="w-72 p-0">
+                <div className="p-3 border-b">
+                  <p className="text-sm font-medium text-muted-foreground">Entreprise active</p>
                 </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right" className="w-56">
-              {hasMultipleCompanies && (
-                <>
-                  {companies.map((company) => (
-                    <DropdownMenuItem
-                      key={company.id}
-                      onClick={() => switchCompany(company.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-medium text-primary">
-                            {company.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        </div>
-                        <span className="truncate">{company.name}</span>
+                
+                <div className="p-2">
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
+                    <div className="relative">
+                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <span className="text-xs font-semibold text-primary-foreground">
+                          {companyInitials}
+                        </span>
                       </div>
-                      {currentCompany?.id === company.id && (
-                        <Check className="w-4 h-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {isAdmin && (
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Paramètres
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{currentCompany?.name}</p>
+                    </div>
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                </div>
+
+                {hasMultipleCompanies && (
+                  <>
+                    <div className="px-3 py-2 border-t">
+                      <p className="text-sm font-medium text-muted-foreground">Autres entreprises</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {companies
+                        .filter(c => c.id !== currentCompany?.id)
+                        .map((company) => {
+                          const notifCount = companyNotifications[company.id] || 0;
+                          const initials = company.name
+                            .split(' ')
+                            .slice(0, 2)
+                            .map(word => word[0]?.toUpperCase())
+                            .join('');
+                          
+                          return (
+                            <button
+                              key={company.id}
+                              onClick={() => handleCompanySwitch(company.id)}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                            >
+                              <div className="relative">
+                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    {initials}
+                                  </span>
+                                </div>
+                                {notifCount > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
+                                    {notifCount}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm truncate">{company.name}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </>
+                )}
+
+                {isAdmin && (
+                  <div className="p-2 border-t">
+                    <button
+                      onClick={handleCreateCompany}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <span className="text-sm font-medium">Créer une nouvelle structure</span>
+                    </button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSettingsClick}
+                className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         )}
 
         <Separator className="bg-sidebar-border" />
