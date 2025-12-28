@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -14,6 +14,8 @@ interface CompanyContextType {
   isLoading: boolean;
   hasMultipleCompanies: boolean;
   switchCompany: (companyId: string) => void;
+  refreshCompanies: () => Promise<void>;
+  addCompany: (company: Company) => void;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
@@ -24,7 +26,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchCompanies = useCallback(async () => {
     if (!user) {
       setCompanies([]);
       setCurrentCompany(null);
@@ -32,84 +34,84 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchCompanies = async () => {
-      setIsLoading(true);
-      
-      try {
-        // For admins, check user_companies table for multi-company access
-        if (role === 'admin') {
-          const { data: userCompanies } = await supabase
-            .from('user_companies')
-            .select('company_id, is_default, companies:company_id(id, name, legal_name)')
-            .eq('user_id', user.id);
+    setIsLoading(true);
+    
+    try {
+      // For admins, check user_companies table for multi-company access
+      if (role === 'admin') {
+        const { data: userCompanies } = await supabase
+          .from('user_companies')
+          .select('company_id, is_default, companies:company_id(id, name, legal_name)')
+          .eq('user_id', user.id);
 
-          if (userCompanies && userCompanies.length > 0) {
-            const companyList = userCompanies
-              .map(uc => uc.companies as unknown as Company)
-              .filter(Boolean);
-            
-            setCompanies(companyList);
-            
-            // Find default company or use first
-            const defaultEntry = userCompanies.find(uc => uc.is_default);
-            const savedCompanyId = localStorage.getItem('selectedCompanyId');
-            
-            let selectedCompany: Company | null = null;
-            
-            if (savedCompanyId) {
-              selectedCompany = companyList.find(c => c.id === savedCompanyId) || null;
-            }
-            if (!selectedCompany && defaultEntry) {
-              selectedCompany = defaultEntry.companies as unknown as Company;
-            }
-            if (!selectedCompany && companyList.length > 0) {
-              selectedCompany = companyList[0];
-            }
-            
-            setCurrentCompany(selectedCompany);
-            setIsLoading(false);
-            return;
+        if (userCompanies && userCompanies.length > 0) {
+          const companyList = userCompanies
+            .map(uc => uc.companies as unknown as Company)
+            .filter(Boolean);
+          
+          setCompanies(companyList);
+          
+          // Find default company or use first
+          const defaultEntry = userCompanies.find(uc => uc.is_default);
+          const savedCompanyId = localStorage.getItem('selectedCompanyId');
+          
+          let selectedCompany: Company | null = null;
+          
+          if (savedCompanyId) {
+            selectedCompany = companyList.find(c => c.id === savedCompanyId) || null;
           }
-        }
-
-        // Fallback: get company from employee record
-        const { data: employee } = await supabase
-          .from('employees')
-          .select('company_id, companies:company_id(id, name, legal_name)')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (employee?.companies) {
-          const company = employee.companies as unknown as Company;
-          setCompanies([company]);
-          setCurrentCompany(company);
-        } else {
-          // Try to get any company for admins/managers
-          if (role === 'admin' || role === 'manager') {
-            const { data: allCompanies } = await supabase
-              .from('companies')
-              .select('id, name, legal_name')
-              .limit(10);
-            
-            if (allCompanies && allCompanies.length > 0) {
-              setCompanies(allCompanies);
-              const savedCompanyId = localStorage.getItem('selectedCompanyId');
-              const selectedCompany = savedCompanyId 
-                ? allCompanies.find(c => c.id === savedCompanyId) || allCompanies[0]
-                : allCompanies[0];
-              setCurrentCompany(selectedCompany);
-            }
+          if (!selectedCompany && defaultEntry) {
+            selectedCompany = defaultEntry.companies as unknown as Company;
           }
+          if (!selectedCompany && companyList.length > 0) {
+            selectedCompany = companyList[0];
+          }
+          
+          setCurrentCompany(selectedCompany);
+          setIsLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error fetching companies:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
 
-    fetchCompanies();
+      // Fallback: get company from employee record
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('company_id, companies:company_id(id, name, legal_name)')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (employee?.companies) {
+        const company = employee.companies as unknown as Company;
+        setCompanies([company]);
+        setCurrentCompany(company);
+      } else {
+        // Try to get any company for admins/managers
+        if (role === 'admin' || role === 'manager') {
+          const { data: allCompanies } = await supabase
+            .from('companies')
+            .select('id, name, legal_name')
+            .limit(10);
+          
+          if (allCompanies && allCompanies.length > 0) {
+            setCompanies(allCompanies);
+            const savedCompanyId = localStorage.getItem('selectedCompanyId');
+            const selectedCompany = savedCompanyId 
+              ? allCompanies.find(c => c.id === savedCompanyId) || allCompanies[0]
+              : allCompanies[0];
+            setCurrentCompany(selectedCompany);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [user, role]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   const switchCompany = (companyId: string) => {
     const company = companies.find(c => c.id === companyId);
@@ -117,6 +119,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setCurrentCompany(company);
       localStorage.setItem('selectedCompanyId', companyId);
     }
+  };
+
+  const refreshCompanies = async () => {
+    await fetchCompanies();
+  };
+
+  const addCompany = (company: Company) => {
+    setCompanies(prev => [...prev, company]);
   };
 
   return (
@@ -127,6 +137,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         isLoading,
         hasMultipleCompanies: companies.length > 1,
         switchCompany,
+        refreshCompanies,
+        addCompany,
       }}
     >
       {children}
