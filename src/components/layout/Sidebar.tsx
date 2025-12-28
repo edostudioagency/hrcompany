@@ -10,6 +10,7 @@ import {
   Euro,
   FileText,
   Building2,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Échanges', href: '/swaps', icon: ArrowLeftRight, hasBadge: true },
   { name: 'Commissions', href: '/commissions', icon: Euro, managerOnly: true },
   { name: 'Fiches de paie', href: '/payslips', icon: FileText },
+  { name: 'Paramètres', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar() {
@@ -73,6 +75,7 @@ export function Sidebar() {
   };
 
   const isManagerOrAdmin = role === 'admin' || role === 'manager';
+  const isAdmin = role === 'admin';
   const displayName = profile?.first_name && profile?.last_name 
     ? `${profile.first_name} ${profile.last_name}` 
     : user?.email?.split('@')[0] || '';
@@ -111,6 +114,8 @@ export function Sidebar() {
         {navigation.map((item) => {
           // Hide manager-only items for employees
           if (item.managerOnly && !isManagerOrAdmin) return null;
+          // Hide admin-only items for non-admins
+          if ((item as any).adminOnly && !isAdmin) return null;
 
           const isActive = location.pathname === item.href;
           const badgeCount = item.hasBadge && isManagerOrAdmin ? getBadgeCount(item.href) : 0;

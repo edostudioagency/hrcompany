@@ -16,6 +16,7 @@ import Swaps from "./pages/Swaps";
 import Commissions from "./pages/Commissions";
 import Payslips from "./pages/Payslips";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
@@ -80,6 +81,13 @@ const App = () => (
               <Route path="/commissions" element={
                 <ProtectedRoute allowedRoles={['admin', 'manager']}>
                   <Commissions />
+                </ProtectedRoute>
+              } />
+              
+              {/* Protected routes - admin only */}
+              <Route path="/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Settings />
                 </ProtectedRoute>
               } />
               
