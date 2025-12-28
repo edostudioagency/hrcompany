@@ -242,7 +242,7 @@ export function RulesSettings() {
               <div>
                 <Label htmlFor="sick-accrual">Cumul CP pendant arrêt maladie</Label>
                 <p className="text-sm text-muted-foreground">
-                  Les employés cumulent-ils des CP pendant leur arrêt maladie ?
+                  Conformément à la loi, les employés cumulent des CP pendant leur arrêt maladie
                 </p>
               </div>
               <Switch
@@ -256,12 +256,13 @@ export function RulesSettings() {
 
             {formData.sick_leave_accrual && (
               <div className="space-y-2">
-                <Label htmlFor="sick-rate">Taux de cumul pendant maladie (%)</Label>
+                <Label htmlFor="sick-rate">Jours de CP cumulés par mois d'arrêt</Label>
                 <Input
                   id="sick-rate"
                   type="number"
                   min={0}
-                  max={100}
+                  max={5}
+                  step={0.01}
                   value={formData.sick_leave_accrual_rate}
                   onChange={(e) =>
                     setFormData({
@@ -271,7 +272,7 @@ export function RulesSettings() {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  100% = cumul complet, 50% = moitié des CP cumulés
+                  Exemple : 2.08 jours/mois = même cumul qu'en activité
                 </p>
               </div>
             )}
