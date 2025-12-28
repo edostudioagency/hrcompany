@@ -1,5 +1,5 @@
 // Enums
-export type UserRole = 'employee' | 'manager' | 'admin';
+export type UserRole = 'employee' | 'manager' | 'admin' | 'accountant';
 export type ShiftStatus = 'planned' | 'completed' | 'cancelled';
 export type TimeOffType = 'conge_paye' | 'rtt' | 'maladie' | 'sans_solde' | 'autre';
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -170,6 +170,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrateur',
   manager: 'Manager',
   employee: 'Employé',
+  accountant: 'Comptable',
 };
 
 export const EMPLOYEE_STATUS_LABELS: Record<EmployeeStatus, string> = {

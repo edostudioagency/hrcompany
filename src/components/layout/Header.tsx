@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,19 +23,22 @@ interface HeaderProps {
   subtitle?: string;
 }
 
-const roleLabels = {
+const roleLabels: Record<string, string> = {
   admin: 'Administrateur',
   manager: 'Manager',
   employee: 'Employé',
+  accountant: 'Comptable',
 };
 
-const roleColors = {
+const roleColors: Record<string, string> = {
   admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   employee: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  accountant: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
 };
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const navigate = useNavigate();
   const { sidebarOpen } = useApp();
   const { user, role, signOut } = useAuth();
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
@@ -114,7 +118,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 Mon profil
               </DropdownMenuItem>
