@@ -45,6 +45,7 @@ interface Employee {
   salary_type: string | null;
   user_id: string | null;
   manager_id: string | null;
+  is_executive: boolean;
 }
 
 interface Schedule {
@@ -110,6 +111,7 @@ export function EmployeeEditDialog({
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [contractHours, setContractHours] = useState('');
   const [grossSalary, setGrossSalary] = useState('');
+  const [isExecutive, setIsExecutive] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -126,6 +128,7 @@ export function EmployeeEditDialog({
       setEndDate(employee.contract_end_date ? new Date(employee.contract_end_date) : undefined);
       setContractHours(employee.contract_hours?.toString() || '');
       setGrossSalary(employee.gross_salary?.toString() || '');
+      setIsExecutive(employee.is_executive || false);
       fetchSchedules();
     }
   }, [employee]);
@@ -194,6 +197,10 @@ export function EmployeeEditDialog({
   const handleSaveContract = async () => {
     if (!employee) return;
 
+    const wasExecutive = employee.is_executive;
+    const becameExecutive = !wasExecutive && isExecutive;
+    const lostExecutive = wasExecutive && !isExecutive;
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -205,10 +212,35 @@ export function EmployeeEditDialog({
           contract_end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           contract_hours: contractHours ? parseFloat(contractHours) : null,
           gross_salary: grossSalary ? parseFloat(grossSalary) : null,
+          is_executive: isExecutive,
         })
         .eq('id', employee.id);
 
       if (error) throw error;
+
+      // If employee became executive, create RTT balance
+      if (becameExecutive) {
+        const currentYear = new Date().getFullYear();
+        await supabase.from('leave_balances').insert({
+          employee_id: employee.id,
+          type: 'rtt',
+          year: currentYear,
+          annual_entitlement: 10,
+          used: 0,
+        });
+      }
+
+      // If employee lost executive status, remove RTT balance
+      if (lostExecutive) {
+        const currentYear = new Date().getFullYear();
+        await supabase
+          .from('leave_balances')
+          .delete()
+          .eq('employee_id', employee.id)
+          .eq('type', 'rtt')
+          .eq('year', currentYear);
+      }
+
       toast.success('Contrat mis à jour');
       onUpdate();
     } catch (error) {
@@ -503,6 +535,19 @@ export function EmployeeEditDialog({
                       step="0.01"
                     />
                   </div>
+                </div>
+                <div className="flex items-center justify-between py-3 px-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <Label htmlFor="is-executive" className="font-medium">Statut Cadre</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Les cadres bénéficient de RTT (10 jours/an)
+                    </p>
+                  </div>
+                  <Switch
+                    id="is-executive"
+                    checked={isExecutive}
+                    onCheckedChange={setIsExecutive}
+                  />
                 </div>
                 <Button onClick={handleSaveContract} disabled={loading} className="w-full">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

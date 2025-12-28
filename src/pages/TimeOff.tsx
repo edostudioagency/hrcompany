@@ -94,8 +94,9 @@ const TimeOff = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; first_name: string; last_name: string; is_executive: boolean }>>([]);
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
+  const [currentEmployeeIsExecutive, setCurrentEmployeeIsExecutive] = useState(false);
   const [editingRequest, setEditingRequest] = useState<TimeOffRequest | null>(null);
 
   const { updateBalance, refetch: refetchBalances } = useLeaveBalances(currentEmployeeId || undefined);
@@ -116,16 +117,27 @@ const TimeOff = () => {
     ? (formData.employeeId || currentEmployeeId) 
     : currentEmployeeId;
 
+  // Check if selected employee is executive for RTT filtering
+  const selectedEmployeeIsExecutive = isManagerOrAdmin
+    ? (employees.find(e => e.id === selectedEmployeeId)?.is_executive || false)
+    : currentEmployeeIsExecutive;
+
+  // Leave types available based on executive status
+  const availableLeaveTypes = selectedEmployeeIsExecutive
+    ? ['conge_paye', 'rtt', 'maladie', 'sans_solde', 'autre']
+    : ['conge_paye', 'maladie', 'sans_solde', 'autre'];
+
   const fetchData = async () => {
     try {
       const { data: empData } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, user_id');
+        .select('id, first_name, last_name, user_id, is_executive');
       
       setEmployees(empData || []);
       
       const currentEmp = empData?.find((e) => e.user_id === user?.id);
       setCurrentEmployeeId(currentEmp?.id || null);
+      setCurrentEmployeeIsExecutive(currentEmp?.is_executive || false);
 
       const { data, error } = await supabase
         .from('time_off_requests')
@@ -343,11 +355,11 @@ const TimeOff = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="conge_paye">Congés payés</SelectItem>
-                        <SelectItem value="rtt">RTT</SelectItem>
-                        <SelectItem value="maladie">Maladie</SelectItem>
-                        <SelectItem value="sans_solde">Sans solde</SelectItem>
-                        <SelectItem value="autre">Autre</SelectItem>
+                        {availableLeaveTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {typeLabels[type] || type}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

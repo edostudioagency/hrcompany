@@ -72,6 +72,7 @@ interface Employee {
   user_id: string | null;
   manager_id: string | null;
   created_at: string;
+  is_executive: boolean;
 }
 
 const DAYS_OF_WEEK = [
