@@ -44,6 +44,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface Payslip {
   id: string;
@@ -86,6 +87,7 @@ const MONTHS = [
 
 export default function PayslipsPage() {
   const { role } = useAuth();
+  const { currentCompany } = useCompany();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,30 +108,48 @@ export default function PayslipsPage() {
   const isManagerOrAdmin = role === 'admin' || role === 'manager';
 
   const fetchData = async () => {
-    try {
-      const [payslipsRes, employeesRes] = await Promise.all([
-        supabase
-          .from('payslips')
-          .select('id, employee_id, month, year, file_name, file_path, created_at')
-          .order('year', { ascending: false })
-          .order('month', { ascending: false }),
-        supabase
-          .from('employees')
-          .select('id, first_name, last_name, email, status')
-          .eq('status', 'active'),
-      ]);
+    if (!currentCompany?.id) {
+      setPayslips([]);
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
 
-      if (payslipsRes.error) throw payslipsRes.error;
-      if (employeesRes.error) throw employeesRes.error;
+    try {
+      // Fetch employees for this company
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, email, status')
+        .eq('company_id', currentCompany.id)
+        .eq('status', 'active');
+
+      if (employeesError) throw employeesError;
+      setEmployees(employeesData || []);
+
+      const employeeIds = employeesData?.map(e => e.id) || [];
+
+      if (employeeIds.length === 0) {
+        setPayslips([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: payslipsData, error: payslipsError } = await supabase
+        .from('payslips')
+        .select('id, employee_id, month, year, file_name, file_path, created_at')
+        .in('employee_id', employeeIds)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
+
+      if (payslipsError) throw payslipsError;
 
       // Enrich payslips with employee data
-      const enrichedPayslips = (payslipsRes.data || []).map(p => ({
+      const enrichedPayslips = (payslipsData || []).map(p => ({
         ...p,
-        employee: employeesRes.data?.find(e => e.id === p.employee_id)
+        employee: employeesData?.find(e => e.id === p.employee_id)
       }));
       
       setPayslips(enrichedPayslips as Payslip[]);
-      setEmployees(employeesRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erreur lors du chargement des données');
@@ -139,8 +159,9 @@ export default function PayslipsPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
-  }, []);
+  }, [currentCompany?.id]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -270,6 +291,16 @@ export default function PayslipsPage() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Fiches de paie">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (loading) {
     return (
@@ -498,7 +529,7 @@ export default function PayslipsPage() {
           <DialogHeader>
             <DialogTitle>Importer une fiche de paie</DialogTitle>
             <DialogDescription>
-              Sélectionnez un employé et importez son fichier PDF
+              Sélectionnez l'employé et le fichier PDF à importer
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

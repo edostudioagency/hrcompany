@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -90,6 +91,7 @@ const statusBadge = (status: string) => {
 
 const TimeOff = () => {
   const { role, user } = useAuth();
+  const { currentCompany } = useCompany();
   const [requests, setRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -129,10 +131,18 @@ const TimeOff = () => {
     : ['conge_paye', 'maladie', 'sans_solde', 'autre'];
 
   const fetchData = async () => {
+    if (!currentCompany?.id) {
+      setRequests([]);
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data: empData } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, user_id, is_executive');
+        .select('id, first_name, last_name, user_id, is_executive')
+        .eq('company_id', currentCompany.id);
       
       setEmployees(empData || []);
       
@@ -140,12 +150,21 @@ const TimeOff = () => {
       setCurrentEmployeeId(currentEmp?.id || null);
       setCurrentEmployeeIsExecutive(currentEmp?.is_executive || false);
 
+      const employeeIds = empData?.map(e => e.id) || [];
+      
+      if (employeeIds.length === 0) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('time_off_requests')
         .select(`
           *,
           employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)
         `)
+        .in('employee_id', employeeIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -159,8 +178,9 @@ const TimeOff = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
-  }, [user?.id]);
+  }, [user?.id, currentCompany?.id]);
 
   const handleSubmit = async () => {
     const targetEmployeeId = isManagerOrAdmin 
@@ -286,6 +306,16 @@ const TimeOff = () => {
   const filteredRequests = statusFilter === 'all' 
     ? requests 
     : requests.filter((r) => r.status === statusFilter);
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Congés & Absences">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout
@@ -474,7 +504,7 @@ const TimeOff = () => {
                         <TableRow>
                           <TableHead>Employé</TableHead>
                           <TableHead>Type</TableHead>
-                          <TableHead>Dates</TableHead>
+                          <TableHead>Période</TableHead>
                           <TableHead>Motif</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -506,9 +536,6 @@ const TimeOff = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button size="sm" variant="ghost" onClick={() => setEditingRequest(request)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => handleApprove(request)}>
                                     <Check className="h-4 w-4 mr-1" />
                                     Approuver
@@ -532,24 +559,22 @@ const TimeOff = () => {
 
           <TabsContent value="all">
             <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Toutes les demandes</CardTitle>
-                    <CardDescription>Historique de toutes les demandes</CardDescription>
-                  </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filtrer par statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="pending">En attente</SelectItem>
-                      <SelectItem value="approved">Approuvé</SelectItem>
-                      <SelectItem value="rejected">Refusé</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Toutes les demandes</CardTitle>
+                  <CardDescription>Historique des demandes de congés</CardDescription>
                 </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrer par statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="approved">Approuvé</SelectItem>
+                    <SelectItem value="rejected">Refusé</SelectItem>
+                  </SelectContent>
+                </Select>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -562,16 +587,16 @@ const TimeOff = () => {
                       <TableRow>
                         <TableHead>Employé</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead>Dates</TableHead>
+                        <TableHead>Période</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead>Soumis le</TableHead>
+                        <TableHead>Date demande</TableHead>
                         {isManagerOrAdmin && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isManagerOrAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={isManagerOrAdmin ? 6 : 5} className="text-center text-muted-foreground py-8">
                             Aucune demande trouvée
                           </TableCell>
                         </TableRow>
@@ -579,17 +604,32 @@ const TimeOff = () => {
                         filteredRequests.map((request) => (
                           <TableRow key={request.id}>
                             <TableCell>
-                              {request.employee?.first_name} {request.employee?.last_name}
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-primary">
+                                    {request.employee?.first_name?.[0]}{request.employee?.last_name?.[0]}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium">{request.employee?.first_name} {request.employee?.last_name}</p>
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell>{typeLabels[request.type] || request.type}</TableCell>
                             <TableCell>
-                              {format(new Date(request.start_date), 'dd/MM/yyyy')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
+                              {format(new Date(request.start_date), 'dd/MM')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
                             </TableCell>
                             <TableCell>{statusBadge(request.status)}</TableCell>
-                            <TableCell>{format(new Date(request.created_at), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {format(new Date(request.created_at), 'dd/MM/yyyy')}
+                            </TableCell>
                             {isManagerOrAdmin && (
                               <TableCell className="text-right">
-                                <Button size="sm" variant="ghost" onClick={() => setEditingRequest(request)}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingRequest(request)}
+                                >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                               </TableCell>
@@ -604,21 +644,21 @@ const TimeOff = () => {
             </Card>
           </TabsContent>
 
-          {/* Team Overview Tab - Only for managers and admins */}
           {isManagerOrAdmin && (
             <TabsContent value="team">
               <TeamLeaveOverview />
             </TabsContent>
           )}
         </Tabs>
-
-        <TimeOffEditDialog
-          open={!!editingRequest}
-          onClose={() => setEditingRequest(null)}
-          request={editingRequest}
-          onUpdate={fetchData}
-        />
       </div>
+
+      {/* Edit Dialog */}
+      <TimeOffEditDialog
+        request={editingRequest}
+        open={!!editingRequest}
+        onOpenChange={(open) => !open && setEditingRequest(null)}
+        onSaved={fetchData}
+      />
     </MainLayout>
   );
 };

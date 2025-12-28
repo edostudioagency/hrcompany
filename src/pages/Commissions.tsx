@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Send, Euro, TrendingUp, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface Commission {
   id: string;
@@ -96,6 +97,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function CommissionsPage() {
+  const { currentCompany } = useCompany();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [settings, setSettings] = useState<AccountantSettings | null>(null);
@@ -120,25 +122,45 @@ export default function CommissionsPage() {
   });
 
   const fetchData = async () => {
+    if (!currentCompany?.id) {
+      setCommissions([]);
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const [commissionsRes, employeesRes, settingsRes] = await Promise.all([
+      // Fetch employees for this company
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, email, status')
+        .eq('company_id', currentCompany.id)
+        .eq('status', 'active');
+
+      if (employeesError) throw employeesError;
+      setEmployees(employeesData || []);
+
+      const employeeIds = employeesData?.map(e => e.id) || [];
+
+      if (employeeIds.length === 0) {
+        setCommissions([]);
+        setLoading(false);
+        return;
+      }
+
+      const [commissionsRes, settingsRes] = await Promise.all([
         supabase
           .from('commissions')
           .select('*, employee:employees(id, first_name, last_name, email)')
+          .in('employee_id', employeeIds)
           .order('year', { ascending: false })
           .order('month', { ascending: false }),
-        supabase
-          .from('employees')
-          .select('id, first_name, last_name, email, status')
-          .eq('status', 'active'),
-        supabase.from('accountant_settings').select('*').limit(1).single(),
+        supabase.from('accountant_settings').select('*').limit(1).maybeSingle(),
       ]);
 
-      if (commissionsRes.error && commissionsRes.error.code !== 'PGRST116') throw commissionsRes.error;
-      if (employeesRes.error) throw employeesRes.error;
+      if (commissionsRes.error) throw commissionsRes.error;
 
       setCommissions(commissionsRes.data || []);
-      setEmployees(employeesRes.data || []);
 
       if (settingsRes.data) {
         setSettings(settingsRes.data);
@@ -157,8 +179,9 @@ export default function CommissionsPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
-  }, []);
+  }, [currentCompany?.id]);
 
   const handleSubmit = async () => {
     if (!formData.employee_id || !formData.amount) {
@@ -285,6 +308,16 @@ export default function CommissionsPage() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Commissions">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (loading) {
     return (
@@ -540,11 +573,11 @@ export default function CommissionsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>Description (optionnel)</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Description optionnelle..."
+                placeholder="Détails de la commission..."
               />
             </div>
           </div>
@@ -557,13 +590,13 @@ export default function CommissionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Accountant Settings Dialog */}
+      {/* Settings Dialog */}
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Paramètres comptable</DialogTitle>
             <DialogDescription>
-              Configurez les paramètres d'envoi au comptable
+              Configurez les options d'envoi des commissions
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -573,7 +606,7 @@ export default function CommissionsPage() {
                 type="email"
                 value={settingsForm.email}
                 onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
-                placeholder="comptable@exemple.fr"
+                placeholder="comptable@exemple.com"
               />
             </div>
           </div>
