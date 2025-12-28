@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, ArrowLeftRight, Calendar, Clock } from 'lucide-react';
@@ -20,6 +21,7 @@ interface CompanySettings {
   sick_leave_accrual_rate: number;
   default_work_hours_per_day: number;
   weekly_hours: number;
+  leave_calculation_mode: 'jours_ouvres' | 'jours_ouvrables';
 }
 
 export function RulesSettings() {
@@ -36,6 +38,7 @@ export function RulesSettings() {
     sick_leave_accrual_rate: 0,
     default_work_hours_per_day: 7,
     weekly_hours: 35,
+    leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables',
   });
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function RulesSettings() {
         if (error && error.code !== 'PGRST116') throw error;
 
         if (settingsData) {
-          setSettings(settingsData);
+          setSettings(settingsData as CompanySettings);
           setFormData({
             allow_shift_swaps: settingsData.allow_shift_swaps ?? true,
             annual_paid_leave_days: Number(settingsData.annual_paid_leave_days) || 25,
@@ -74,6 +77,7 @@ export function RulesSettings() {
             sick_leave_accrual_rate: Number(settingsData.sick_leave_accrual_rate) || 0,
             default_work_hours_per_day: Number(settingsData.default_work_hours_per_day) || 7,
             weekly_hours: Number(settingsData.weekly_hours) || 35,
+            leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables',
           });
         }
       }
@@ -110,7 +114,7 @@ export function RulesSettings() {
           .single();
 
         if (error) throw error;
-        setSettings(data);
+        setSettings(data as CompanySettings);
       }
       toast.success('Paramètres enregistrés');
     } catch (error) {
@@ -188,6 +192,43 @@ export function RulesSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Leave calculation mode */}
+          <div className="space-y-3">
+            <Label>Mode de calcul des congés</Label>
+            <RadioGroup
+              value={formData.leave_calculation_mode}
+              onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') =>
+                setFormData({ ...formData, leave_calculation_mode: value })
+              }
+              className="flex flex-col space-y-2"
+            >
+              <div className="flex items-center space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="jours_ouvres" id="jours_ouvres" />
+                <div className="flex-1">
+                  <Label htmlFor="jours_ouvres" className="font-medium cursor-pointer">
+                    Jours ouvrés
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Du lundi au vendredi (5 jours/semaine)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="jours_ouvrables" id="jours_ouvrables" />
+                <div className="flex-1">
+                  <Label htmlFor="jours_ouvrables" className="font-medium cursor-pointer">
+                    Jours ouvrables
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Du lundi au samedi (6 jours/semaine)
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <Separator />
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="annual-leave">Jours de CP annuels</Label>
@@ -201,7 +242,11 @@ export function RulesSettings() {
                   setFormData({ ...formData, annual_paid_leave_days: parseFloat(e.target.value) || 0 })
                 }
               />
-              <p className="text-xs text-muted-foreground">Généralement 25 jours ouvrés</p>
+              <p className="text-xs text-muted-foreground">
+                {formData.leave_calculation_mode === 'jours_ouvres' 
+                  ? 'Généralement 25 jours ouvrés' 
+                  : 'Généralement 30 jours ouvrables'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="monthly-leave">CP cumulés par mois</Label>
@@ -215,7 +260,11 @@ export function RulesSettings() {
                   setFormData({ ...formData, paid_leave_per_month: parseFloat(e.target.value) || 0 })
                 }
               />
-              <p className="text-xs text-muted-foreground">Généralement 2.08 jours/mois</p>
+              <p className="text-xs text-muted-foreground">
+                {formData.leave_calculation_mode === 'jours_ouvres' 
+                  ? 'Généralement 2.08 jours/mois' 
+                  : 'Généralement 2.5 jours/mois'}
+              </p>
             </div>
           </div>
 
