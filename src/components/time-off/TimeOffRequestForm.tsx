@@ -43,12 +43,14 @@ interface TimeOffRequestFormProps {
     partOfDay: PartOfDay;
     reason?: string;
   }) => void;
+  isExecutive?: boolean;
 }
 
 export function TimeOffRequestForm({
   open,
   onClose,
   onSubmit,
+  isExecutive = false,
 }: TimeOffRequestFormProps) {
   const { toast } = useToast();
   const [type, setType] = useState<TimeOffType>('conge_paye');
@@ -115,13 +117,13 @@ export function TimeOffRequestForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(TIME_OFF_TYPE_LABELS) as TimeOffType[]).map(
-                  (t) => (
+                {(Object.keys(TIME_OFF_TYPE_LABELS) as TimeOffType[])
+                  .filter((t) => isExecutive || t !== 'rtt')
+                  .map((t) => (
                     <SelectItem key={t} value={t}>
                       {TIME_OFF_TYPE_LABELS[t]}
                     </SelectItem>
-                  )
-                )}
+                  ))}
               </SelectContent>
             </Select>
           </div>
