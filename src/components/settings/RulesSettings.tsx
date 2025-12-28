@@ -9,7 +9,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, ArrowLeftRight, Calendar, Clock } from 'lucide-react';
-
 interface CompanySettings {
   id: string;
   company_id: string;
@@ -23,7 +22,6 @@ interface CompanySettings {
   weekly_hours: number;
   leave_calculation_mode: 'jours_ouvres' | 'jours_ouvrables';
 }
-
 export function RulesSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,34 +36,26 @@ export function RulesSettings() {
     sick_leave_accrual_rate: 0,
     default_work_hours_per_day: 7,
     weekly_hours: 35,
-    leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables',
+    leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables'
   });
-
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       // First get the company
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
-
+      const {
+        data: companyData
+      } = await supabase.from('companies').select('id').limit(1).maybeSingle();
       if (companyData) {
         setCompanyId(companyData.id);
 
         // Then get settings
-        const { data: settingsData, error } = await supabase
-          .from('company_settings')
-          .select('*')
-          .eq('company_id', companyData.id)
-          .maybeSingle();
-
+        const {
+          data: settingsData,
+          error
+        } = await supabase.from('company_settings').select('*').eq('company_id', companyData.id).maybeSingle();
         if (error && error.code !== 'PGRST116') throw error;
-
         if (settingsData) {
           setSettings(settingsData as CompanySettings);
           setFormData({
@@ -77,7 +67,7 @@ export function RulesSettings() {
             sick_leave_accrual_rate: Number(settingsData.sick_leave_accrual_rate) || 0,
             default_work_hours_per_day: Number(settingsData.default_work_hours_per_day) || 7,
             weekly_hours: Number(settingsData.weekly_hours) || 35,
-            leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables',
+            leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables'
           });
         }
       }
@@ -88,31 +78,27 @@ export function RulesSettings() {
       setLoading(false);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyId) {
       toast.error('Veuillez d\'abord créer une entreprise');
       return;
     }
-
     setSaving(true);
-
     try {
       if (settings) {
-        const { error } = await supabase
-          .from('company_settings')
-          .update(formData)
-          .eq('id', settings.id);
-
+        const {
+          error
+        } = await supabase.from('company_settings').update(formData).eq('id', settings.id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
-          .from('company_settings')
-          .insert({ ...formData, company_id: companyId })
-          .select()
-          .single();
-
+        const {
+          data,
+          error
+        } = await supabase.from('company_settings').insert({
+          ...formData,
+          company_id: companyId
+        }).select().single();
         if (error) throw error;
         setSettings(data as CompanySettings);
       }
@@ -124,32 +110,24 @@ export function RulesSettings() {
       setSaving(false);
     }
   };
-
   if (loading) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
   if (!companyId) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground">
             Veuillez d'abord créer votre entreprise dans l'onglet "Entreprise"
           </p>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+  return <form onSubmit={handleSubmit} className="space-y-6">
       {/* Shift Swaps */}
       <Card>
         <CardHeader>
@@ -169,13 +147,10 @@ export function RulesSettings() {
                 Permet aux employés de demander des échanges de shifts
               </p>
             </div>
-            <Switch
-              id="allow-swaps"
-              checked={formData.allow_shift_swaps}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, allow_shift_swaps: checked })
-              }
-            />
+            <Switch id="allow-swaps" checked={formData.allow_shift_swaps} onCheckedChange={checked => setFormData({
+            ...formData,
+            allow_shift_swaps: checked
+          })} />
           </div>
         </CardContent>
       </Card>
@@ -195,16 +170,22 @@ export function RulesSettings() {
           {/* Leave calculation mode */}
           <div className="space-y-3">
             <Label>Mode de calcul des congés</Label>
-            <RadioGroup
-              value={formData.leave_calculation_mode}
-              onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') => {
-                const defaults = value === 'jours_ouvres' 
-                  ? { annual_paid_leave_days: 25, paid_leave_per_month: 2.08, sick_leave_accrual_rate: 1.67 }
-                  : { annual_paid_leave_days: 30, paid_leave_per_month: 2.5, sick_leave_accrual_rate: 2 };
-                setFormData({ ...formData, leave_calculation_mode: value, ...defaults });
-              }}
-              className="flex flex-col space-y-2"
-            >
+            <RadioGroup value={formData.leave_calculation_mode} onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') => {
+            const defaults = value === 'jours_ouvres' ? {
+              annual_paid_leave_days: 25,
+              paid_leave_per_month: 2.08,
+              sick_leave_accrual_rate: 1.67
+            } : {
+              annual_paid_leave_days: 30,
+              paid_leave_per_month: 2.5,
+              sick_leave_accrual_rate: 2
+            };
+            setFormData({
+              ...formData,
+              leave_calculation_mode: value,
+              ...defaults
+            });
+          }} className="flex flex-col space-y-2">
               <div className="flex items-center space-x-3 rounded-lg border p-3">
                 <RadioGroupItem value="jours_ouvres" id="jours_ouvres" />
                 <div className="flex-1">
@@ -235,53 +216,32 @@ export function RulesSettings() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="annual-leave">Jours de CP annuels</Label>
-              <Input
-                id="annual-leave"
-                type="number"
-                min={0}
-                step={0.5}
-                value={formData.annual_paid_leave_days}
-                onChange={(e) =>
-                  setFormData({ ...formData, annual_paid_leave_days: parseFloat(e.target.value) || 0 })
-                }
-              />
+              <Input id="annual-leave" type="number" min={0} step={0.5} value={formData.annual_paid_leave_days} onChange={e => setFormData({
+              ...formData,
+              annual_paid_leave_days: parseFloat(e.target.value) || 0
+            })} />
               <p className="text-xs text-muted-foreground">
-                {formData.leave_calculation_mode === 'jours_ouvres' 
-                  ? 'Généralement 25 jours ouvrés' 
-                  : 'Généralement 30 jours ouvrables'}
+                {formData.leave_calculation_mode === 'jours_ouvres' ? 'Généralement 25 jours ouvrés' : 'Généralement 30 jours ouvrables'}
               </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="monthly-leave">CP cumulés par mois</Label>
-              <Input
-                id="monthly-leave"
-                type="number"
-                min={0}
-                step={0.01}
-                value={formData.paid_leave_per_month}
-                onChange={(e) =>
-                  setFormData({ ...formData, paid_leave_per_month: parseFloat(e.target.value) || 0 })
-                }
-              />
+              <Input id="monthly-leave" type="number" min={0} step={0.01} value={formData.paid_leave_per_month} onChange={e => setFormData({
+              ...formData,
+              paid_leave_per_month: parseFloat(e.target.value) || 0
+            })} />
               <p className="text-xs text-muted-foreground">
-                {formData.leave_calculation_mode === 'jours_ouvres' 
-                  ? 'Généralement 2.08 jours/mois' 
-                  : 'Généralement 2.5 jours/mois'}
+                {formData.leave_calculation_mode === 'jours_ouvres' ? 'Généralement 2.08 jours/mois' : 'Généralement 2.5 jours/mois'}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="rtt-days">Jours de RTT par an (cadres)</Label>
-            <Input
-              id="rtt-days"
-              type="number"
-              min={0}
-              value={formData.rtt_days_per_year}
-              onChange={(e) =>
-                setFormData({ ...formData, rtt_days_per_year: parseInt(e.target.value) || 0 })
-              }
-            />
+            <Input id="rtt-days" type="number" min={0} value={formData.rtt_days_per_year} onChange={e => setFormData({
+            ...formData,
+            rtt_days_per_year: parseInt(e.target.value) || 0
+          })} />
             <p className="text-xs text-muted-foreground">
               Applicable uniquement aux employés ayant le statut cadre
             </p>
@@ -297,37 +257,20 @@ export function RulesSettings() {
                   Conformément à la loi, les employés cumulent des CP pendant leur arrêt maladie
                 </p>
               </div>
-              <Switch
-                id="sick-accrual"
-                checked={formData.sick_leave_accrual}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, sick_leave_accrual: checked })
-                }
-              />
+              <Switch id="sick-accrual" checked={formData.sick_leave_accrual} onCheckedChange={checked => setFormData({
+              ...formData,
+              sick_leave_accrual: checked
+            })} />
             </div>
 
-            {formData.sick_leave_accrual && (
-              <div className="space-y-2">
+            {formData.sick_leave_accrual && <div className="space-y-2">
                 <Label htmlFor="sick-rate">Jours de CP cumulés par mois d'arrêt</Label>
-                <Input
-                  id="sick-rate"
-                  type="number"
-                  min={0}
-                  max={5}
-                  step={0.01}
-                  value={formData.sick_leave_accrual_rate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sick_leave_accrual_rate: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Exemple : 2.08 jours/mois = même cumul qu'en activité
-                </p>
-              </div>
-            )}
+                <Input id="sick-rate" type="number" min={0} max={5} step={0.01} value={formData.sick_leave_accrual_rate} onChange={e => setFormData({
+              ...formData,
+              sick_leave_accrual_rate: parseFloat(e.target.value) || 0
+            })} />
+                
+              </div>}
           </div>
         </CardContent>
       </Card>
@@ -347,32 +290,17 @@ export function RulesSettings() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="daily-hours">Heures par jour</Label>
-              <Input
-                id="daily-hours"
-                type="number"
-                min={0}
-                step={0.5}
-                value={formData.default_work_hours_per_day}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    default_work_hours_per_day: parseFloat(e.target.value) || 0,
-                  })
-                }
-              />
+              <Input id="daily-hours" type="number" min={0} step={0.5} value={formData.default_work_hours_per_day} onChange={e => setFormData({
+              ...formData,
+              default_work_hours_per_day: parseFloat(e.target.value) || 0
+            })} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="weekly-hours">Heures hebdomadaires</Label>
-              <Input
-                id="weekly-hours"
-                type="number"
-                min={0}
-                step={0.5}
-                value={formData.weekly_hours}
-                onChange={(e) =>
-                  setFormData({ ...formData, weekly_hours: parseFloat(e.target.value) || 0 })
-                }
-              />
+              <Input id="weekly-hours" type="number" min={0} step={0.5} value={formData.weekly_hours} onChange={e => setFormData({
+              ...formData,
+              weekly_hours: parseFloat(e.target.value) || 0
+            })} />
             </div>
           </div>
         </CardContent>
@@ -380,14 +308,9 @@ export function RulesSettings() {
 
       <div className="flex justify-end">
         <Button type="submit" disabled={saving}>
-          {saving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Enregistrer les paramètres
         </Button>
       </div>
-    </form>
-  );
+    </form>;
 }
