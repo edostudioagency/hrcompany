@@ -34,7 +34,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
-import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
+import { EmployeeLeaveHistory } from '@/components/time-off/EmployeeLeaveHistory';
 
 interface Employee {
   id: string;
@@ -476,7 +476,7 @@ export function EmployeeDetailDialog({
 
           {/* Leave Tab */}
           <TabsContent value="leave" className="space-y-4 mt-4">
-            <LeaveBalanceCard employeeId={employee.id} />
+            <EmployeeLeaveHistory employeeId={employee.id} showBalances={true} />
           </TabsContent>
 
           {/* Documents Tab */}

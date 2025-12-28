@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Users } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,7 @@ import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
 import { LeaveEstimation } from '@/components/time-off/LeaveEstimation';
 import { useLeaveBalances } from '@/hooks/useLeaveBalances';
 import { calculateWorkingDays, LEAVE_TYPE_LABELS } from '@/lib/leave-calculator';
+import { TeamLeaveOverview } from '@/components/time-off/TeamLeaveOverview';
 
 interface TimeOffRequest {
   id: string;
@@ -311,6 +312,12 @@ const TimeOff = () => {
                 </TabsTrigger>
               )}
               <TabsTrigger value="all">Toutes les demandes</TabsTrigger>
+              {isManagerOrAdmin && (
+                <TabsTrigger value="team" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Vue équipe
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -596,6 +603,13 @@ const TimeOff = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Team Overview Tab - Only for managers and admins */}
+          {isManagerOrAdmin && (
+            <TabsContent value="team">
+              <TeamLeaveOverview />
+            </TabsContent>
+          )}
         </Tabs>
 
         <TimeOffEditDialog
