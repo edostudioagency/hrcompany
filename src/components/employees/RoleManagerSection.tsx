@@ -61,6 +61,7 @@ export function RoleManagerSection({
   const [loading, setLoading] = useState(false);
   const [loadingRole, setLoadingRole] = useState(true);
   const [savingManager, setSavingManager] = useState(false);
+  const [adminCount, setAdminCount] = useState(0);
 
   const isAdmin = currentUserRole === 'admin';
 
@@ -83,6 +84,14 @@ export function RoleManagerSection({
           setCurrentRole(roleData.role as AppRole);
         }
       }
+
+      // Count total admins
+      const { count: adminsCount } = await supabase
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'admin');
+      
+      setAdminCount(adminsCount || 0);
 
       // Fetch list of managers and admins
       const { data: managersData } = await supabase
@@ -122,6 +131,12 @@ export function RoleManagerSection({
   const handleRoleChange = async (newRole: AppRole) => {
     if (!employeeUserId || !isAdmin) return;
 
+    // Prevent removing the last admin
+    if (currentRole === 'admin' && newRole !== 'admin' && adminCount <= 1) {
+      toast.error('Impossible de retirer le dernier administrateur. Promouvez d\'abord un autre utilisateur en administrateur.');
+      return;
+    }
+
     setLoading(true);
     try {
       // Update the role
@@ -135,7 +150,7 @@ export function RoleManagerSection({
       setCurrentRole(newRole);
       toast.success(`Rôle mis à jour: ${ROLE_LABELS[newRole].label}`);
       onUpdate();
-      fetchData(); // Refresh managers list
+      fetchData(); // Refresh managers list and admin count
     } catch (error) {
       console.error('Error updating role:', error);
       toast.error('Erreur lors de la mise à jour du rôle');
@@ -201,41 +216,47 @@ export function RoleManagerSection({
 
               {isAdmin && currentRole && (
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {(['employee', 'manager', 'admin', 'accountant'] as AppRole[]).map((role) => (
-                    <AlertDialog key={role}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant={currentRole === role ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={currentRole === role || loading}
-                        >
-                          {loading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                          {React.createElement(ROLE_LABELS[role].icon, { className: 'h-3 w-3 mr-1' })}
-                          {ROLE_LABELS[role].label}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Changer le rôle ?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Vous êtes sur le point de promouvoir cet employé au rôle de{' '}
-                            <strong>{ROLE_LABELS[role].label}</strong>.
-                            {role === 'admin' && (
-                              <span className="block mt-2 text-destructive">
-                                ⚠️ Un administrateur a un accès complet au système.
-                              </span>
-                            )}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleRoleChange(role)}>
-                            Confirmer
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  ))}
+                  {(['employee', 'manager', 'admin', 'accountant'] as AppRole[]).map((role) => {
+                    // Check if this would remove the last admin
+                    const isLastAdmin = currentRole === 'admin' && role !== 'admin' && adminCount <= 1;
+                    
+                    return (
+                      <AlertDialog key={role}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant={currentRole === role ? 'default' : 'outline'}
+                            size="sm"
+                            disabled={currentRole === role || loading || isLastAdmin}
+                            title={isLastAdmin ? 'Impossible de retirer le dernier administrateur' : undefined}
+                          >
+                            {loading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                            {React.createElement(ROLE_LABELS[role].icon, { className: 'h-3 w-3 mr-1' })}
+                            {ROLE_LABELS[role].label}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Changer le rôle ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Vous êtes sur le point de promouvoir cet employé au rôle de{' '}
+                              <strong>{ROLE_LABELS[role].label}</strong>.
+                              {role === 'admin' && (
+                                <span className="block mt-2 text-destructive">
+                                  ⚠️ Un administrateur a un accès complet au système.
+                                </span>
+                              )}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRoleChange(role)}>
+                              Confirmer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    );
+                  })}
                 </div>
               )}
               
