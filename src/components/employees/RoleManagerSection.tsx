@@ -252,14 +252,14 @@ export function RoleManagerSection({
         <div className="space-y-3 pt-4 border-t">
           <Label>Manager direct</Label>
           <Select 
-            value={selectedManager} 
-            onValueChange={setSelectedManager}
+            value={selectedManager || 'none'} 
+            onValueChange={(val) => setSelectedManager(val === 'none' ? '' : val)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner un manager" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Aucun manager</SelectItem>
+              <SelectItem value="none">Aucun manager</SelectItem>
               {managers.map((manager) => (
                 <SelectItem key={manager.id} value={manager.id}>
                   {manager.first_name} {manager.last_name}
