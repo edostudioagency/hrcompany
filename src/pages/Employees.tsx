@@ -512,7 +512,7 @@ export default function EmployeesPage() {
         employee={editingEmployee}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        onSaved={fetchEmployees}
+        onUpdate={fetchEmployees}
       />
 
       {/* Employee Detail Dialog */}
@@ -520,6 +520,7 @@ export default function EmployeesPage() {
         employee={selectedEmployee}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+        onUpdate={fetchEmployees}
       />
     </MainLayout>
   );

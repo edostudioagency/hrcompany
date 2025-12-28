@@ -656,8 +656,8 @@ const TimeOff = () => {
       <TimeOffEditDialog
         request={editingRequest}
         open={!!editingRequest}
-        onOpenChange={(open) => !open && setEditingRequest(null)}
-        onSaved={fetchData}
+        onClose={() => setEditingRequest(null)}
+        onUpdate={fetchData}
       />
     </MainLayout>
   );
