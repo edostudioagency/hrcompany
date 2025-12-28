@@ -197,9 +197,12 @@ export function RulesSettings() {
             <Label>Mode de calcul des congés</Label>
             <RadioGroup
               value={formData.leave_calculation_mode}
-              onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') =>
-                setFormData({ ...formData, leave_calculation_mode: value })
-              }
+              onValueChange={(value: 'jours_ouvres' | 'jours_ouvrables') => {
+                const defaults = value === 'jours_ouvres' 
+                  ? { annual_paid_leave_days: 25, paid_leave_per_month: 2.08 }
+                  : { annual_paid_leave_days: 30, paid_leave_per_month: 2.5 };
+                setFormData({ ...formData, leave_calculation_mode: value, ...defaults });
+              }}
               className="flex flex-col space-y-2"
             >
               <div className="flex items-center space-x-3 rounded-lg border p-3">
