@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Shield, Users, Crown, UserCog } from 'lucide-react';
+import { Loader2, Shield, Users, Crown, UserCog, Calculator } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,12 +39,13 @@ interface ManagerOption {
   last_name: string;
 }
 
-type AppRole = 'admin' | 'manager' | 'employee';
+type AppRole = 'admin' | 'manager' | 'employee' | 'accountant';
 
 const ROLE_LABELS: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
   admin: { label: 'Administrateur', icon: Crown, color: 'bg-red-100 text-red-800' },
   manager: { label: 'Manager', icon: UserCog, color: 'bg-blue-100 text-blue-800' },
   employee: { label: 'Employé', icon: Users, color: 'bg-gray-100 text-gray-800' },
+  accountant: { label: 'Comptable', icon: Calculator, color: 'bg-green-100 text-green-800' },
 };
 
 export function RoleManagerSection({
@@ -200,7 +201,7 @@ export function RoleManagerSection({
 
               {isAdmin && currentRole && (
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {(['employee', 'manager', 'admin'] as AppRole[]).map((role) => (
+                  {(['employee', 'manager', 'admin', 'accountant'] as AppRole[]).map((role) => (
                     <AlertDialog key={role}>
                       <AlertDialogTrigger asChild>
                         <Button
