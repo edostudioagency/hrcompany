@@ -234,43 +234,26 @@ export function RulesSettings() {
                 {formData.leave_calculation_mode === 'jours_ouvres' ? 'Généralement 2.08 jours/mois' : 'Généralement 2.5 jours/mois'}
               </p>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="rtt-days">Jours de RTT par an (cadres)</Label>
-            <Input id="rtt-days" type="number" min={0} value={formData.rtt_days_per_year} onChange={e => setFormData({
-            ...formData,
-            rtt_days_per_year: parseInt(e.target.value) || 0
-          })} />
-            <p className="text-xs text-muted-foreground">
-              Applicable uniquement aux employés ayant le statut cadre
-            </p>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="sick-accrual">Cumul CP pendant arrêt maladie</Label>
-                <p className="text-sm text-muted-foreground">
-                  Conformément à la loi, les employés cumulent des CP pendant leur arrêt maladie
-                </p>
-              </div>
-              <Switch id="sick-accrual" checked={formData.sick_leave_accrual} onCheckedChange={checked => setFormData({
+            <div className="space-y-2">
+              <Label htmlFor="rtt-days">Jours de RTT par an (cadres)</Label>
+              <Input id="rtt-days" type="number" min={0} value={formData.rtt_days_per_year} onChange={e => setFormData({
               ...formData,
-              sick_leave_accrual: checked
+              rtt_days_per_year: parseInt(e.target.value) || 0
             })} />
+              <p className="text-xs text-muted-foreground">
+                Applicable uniquement aux employés ayant le statut cadre
+              </p>
             </div>
-
-            {formData.sick_leave_accrual && <div className="space-y-2">
-                <Label htmlFor="sick-rate">Jours de CP cumulés par mois d'arrêt</Label>
-                <Input id="sick-rate" type="number" min={0} max={5} step={0.01} value={formData.sick_leave_accrual_rate} onChange={e => setFormData({
+            <div className="space-y-2">
+              <Label htmlFor="sick-rate">CP cumulés par mois d'arrêt maladie</Label>
+              <Input id="sick-rate" type="number" min={0} max={5} step={0.01} value={formData.sick_leave_accrual_rate} onChange={e => setFormData({
               ...formData,
               sick_leave_accrual_rate: parseFloat(e.target.value) || 0
             })} />
-                
-              </div>}
+              <p className="text-xs text-muted-foreground">
+                {formData.leave_calculation_mode === 'jours_ouvres' ? 'Généralement 1.67 jours/mois' : 'Généralement 2 jours/mois'}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
