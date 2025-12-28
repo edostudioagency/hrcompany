@@ -51,6 +51,7 @@ import {
 import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleDialog';
 import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialog';
 import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface Employee {
   id: string;
@@ -124,6 +125,7 @@ const getContractTypeBadge = (type: string | null) => {
 };
 
 export default function EmployeesPage() {
+  const { currentCompany } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,10 +147,17 @@ export default function EmployeesPage() {
   });
 
   const fetchEmployees = async () => {
+    if (!currentCompany?.id) {
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('employees')
         .select('*')
+        .eq('company_id', currentCompany.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -162,12 +171,18 @@ export default function EmployeesPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchEmployees();
-  }, []);
+  }, [currentCompany?.id]);
 
   const handleSubmit = async () => {
     if (!formData.first_name || !formData.last_name || !formData.email) {
       toast.error('Veuillez remplir les champs obligatoires');
+      return;
+    }
+
+    if (!currentCompany?.id) {
+      toast.error('Veuillez sélectionner une entreprise');
       return;
     }
 
@@ -181,6 +196,7 @@ export default function EmployeesPage() {
         hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
         contract_type: formData.contract_type || null,
         invitation_token: crypto.randomUUID(),
+        company_id: currentCompany.id,
       };
 
       if (editingEmployee) {
@@ -268,6 +284,16 @@ export default function EmployeesPage() {
       (e.position?.toLowerCase() || '').includes(search)
     );
   });
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Employés">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Employés" subtitle="Gérez vos employés et leurs plannings">
@@ -481,20 +507,19 @@ export default function EmployeesPage() {
         </Card>
       </div>
 
-      {/* Employee Edit Dialog */}
+      {/* Edit Employee Dialog */}
       <EmployeeEditDialog
         employee={editingEmployee}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        onUpdate={fetchEmployees}
+        onSaved={fetchEmployees}
       />
 
-      {/* Employee Detail Dialog (Documents) */}
+      {/* Employee Detail Dialog */}
       <EmployeeDetailDialog
         employee={selectedEmployee}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onUpdate={fetchEmployees}
       />
     </MainLayout>
   );

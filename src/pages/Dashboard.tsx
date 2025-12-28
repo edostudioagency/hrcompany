@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { Link } from 'react-router-dom';
 import { format, startOfWeek, endOfWeek, isToday, isTomorrow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -59,6 +60,7 @@ const TIME_OFF_LABELS: Record<string, string> = {
 
 const Dashboard = () => {
   const { role } = useAuth();
+  const { currentCompany } = useCompany();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     activeEmployees: 0,
@@ -74,82 +76,106 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!currentCompany?.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const today = new Date();
         const weekStart = startOfWeek(today, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-        const [
-          employeesRes,
-          timeOffRes,
-          swapsRes,
-          shiftsRes,
-          recentTimeOffRes,
-          upcomingShiftsRes,
-        ] = await Promise.all([
-          supabase.from('employees').select('id, status'),
-          supabase.from('time_off_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          supabase.from('shift_swap_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          supabase.from('shifts').select('id', { count: 'exact', head: true })
-            .gte('date', format(weekStart, 'yyyy-MM-dd'))
-            .lte('date', format(weekEnd, 'yyyy-MM-dd')),
-          supabase.from('time_off_requests')
-            .select('id, type, start_date, end_date, status, employee_id')
-            .order('created_at', { ascending: false })
-            .limit(5),
-          supabase.from('shifts')
-            .select('id, date, start_time, end_time, location, employee_id')
-            .gte('date', format(today, 'yyyy-MM-dd'))
-            .order('date', { ascending: true })
-            .order('start_time', { ascending: true })
-            .limit(10),
-        ]);
+        // Get employees for this company
+        const { data: companyEmployees } = await supabase
+          .from('employees')
+          .select('id, status')
+          .eq('company_id', currentCompany.id);
 
-        const employees = employeesRes.data || [];
-        const activeCount = employees.filter((e) => e.status === 'active').length;
+        const employeeIds = companyEmployees?.map(e => e.id) || [];
+        const activeCount = companyEmployees?.filter((e) => e.status === 'active').length || 0;
+
+        // Fetch counts with employee filtering
+        const [timeOffRes, swapsRes, shiftsRes, recentTimeOffRes, upcomingShiftsRes] = await Promise.all([
+          employeeIds.length > 0 
+            ? supabase.from('time_off_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending').in('employee_id', employeeIds)
+            : { count: 0 },
+          employeeIds.length > 0 
+            ? supabase.from('shift_swap_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending').in('requester_id', employeeIds)
+            : { count: 0 },
+          employeeIds.length > 0 
+            ? supabase.from('shifts').select('id', { count: 'exact', head: true })
+                .gte('date', format(weekStart, 'yyyy-MM-dd'))
+                .lte('date', format(weekEnd, 'yyyy-MM-dd'))
+                .in('employee_id', employeeIds)
+            : { count: 0 },
+          employeeIds.length > 0 
+            ? supabase.from('time_off_requests')
+                .select('id, type, start_date, end_date, status, employee_id')
+                .in('employee_id', employeeIds)
+                .order('created_at', { ascending: false })
+                .limit(5)
+            : { data: [] },
+          employeeIds.length > 0 
+            ? supabase.from('shifts')
+                .select('id, date, start_time, end_time, location, employee_id')
+                .in('employee_id', employeeIds)
+                .gte('date', format(today, 'yyyy-MM-dd'))
+                .order('date', { ascending: true })
+                .order('start_time', { ascending: true })
+                .limit(10)
+            : { data: [] },
+        ]);
 
         setStats({
           activeEmployees: activeCount,
-          totalEmployees: employees.length,
+          totalEmployees: companyEmployees?.length || 0,
           pendingTimeOff: timeOffRes.count || 0,
           pendingSwaps: swapsRes.count || 0,
           shiftsThisWeek: shiftsRes.count || 0,
         });
 
+        // Create employee map for lookups
+        const employeeMap = new Map(companyEmployees?.map((e) => [e.id, e]) || []);
+
         // Fetch employee details for time off requests
-        if (recentTimeOffRes.data) {
-          const employeeIds = [...new Set(recentTimeOffRes.data.map((r) => r.employee_id))];
+        if (recentTimeOffRes.data && recentTimeOffRes.data.length > 0) {
+          const timeOffEmployeeIds = [...new Set(recentTimeOffRes.data.map((r: any) => r.employee_id))];
           const { data: employeeData } = await supabase
             .from('employees')
             .select('id, first_name, last_name')
-            .in('id', employeeIds);
+            .in('id', timeOffEmployeeIds);
 
-          const employeeMap = new Map(employeeData?.map((e) => [e.id, e]) || []);
+          const empMap = new Map(employeeData?.map((e) => [e.id, e]) || []);
           
           setRecentRequests(
-            recentTimeOffRes.data.map((r) => ({
+            recentTimeOffRes.data.map((r: any) => ({
               ...r,
-              employee: employeeMap.get(r.employee_id) || null,
+              employee: empMap.get(r.employee_id) || null,
             }))
           );
+        } else {
+          setRecentRequests([]);
         }
 
         // Fetch employee details for shifts
-        if (upcomingShiftsRes.data) {
-          const employeeIds = [...new Set(upcomingShiftsRes.data.map((s) => s.employee_id))];
+        if (upcomingShiftsRes.data && upcomingShiftsRes.data.length > 0) {
+          const shiftEmployeeIds = [...new Set(upcomingShiftsRes.data.map((s: any) => s.employee_id))];
           const { data: employeeData } = await supabase
             .from('employees')
             .select('id, first_name, last_name')
-            .in('id', employeeIds);
+            .in('id', shiftEmployeeIds);
 
-          const employeeMap = new Map(employeeData?.map((e) => [e.id, e]) || []);
+          const empMap = new Map(employeeData?.map((e) => [e.id, e]) || []);
           
           setUpcomingShifts(
-            upcomingShiftsRes.data.map((s) => ({
+            upcomingShiftsRes.data.map((s: any) => ({
               ...s,
-              employee: employeeMap.get(s.employee_id) || null,
+              employee: empMap.get(s.employee_id) || null,
             }))
           );
+        } else {
+          setUpcomingShifts([]);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -158,8 +184,9 @@ const Dashboard = () => {
       }
     };
 
+    setLoading(true);
     fetchData();
-  }, []);
+  }, [currentCompany?.id]);
 
   const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -178,6 +205,16 @@ const Dashboard = () => {
   }, {} as Record<string, Shift[]>);
 
   const sortedDates = Object.keys(groupedShifts).sort().slice(0, 3);
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Tableau de bord">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (loading) {
     return (

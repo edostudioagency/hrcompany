@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -85,6 +86,7 @@ const statusBadge = (status: string) => {
 
 const Swaps = () => {
   const { role, user } = useAuth();
+  const { currentCompany } = useCompany();
   const [requests, setRequests] = useState<ShiftSwapRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -103,11 +105,19 @@ const Swaps = () => {
   const isManagerOrAdmin = role === 'manager' || role === 'admin';
 
   const fetchData = async () => {
+    if (!currentCompany?.id) {
+      setRequests([]);
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Fetch employees
+      // Fetch employees for this company
       const { data: empData } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, email, user_id');
+        .select('id, first_name, last_name, email, user_id')
+        .eq('company_id', currentCompany.id);
       
       setEmployees(empData || []);
       
@@ -115,7 +125,15 @@ const Swaps = () => {
       const currentEmp = empData?.find((e) => e.user_id === user?.id);
       setCurrentEmployeeId(currentEmp?.id || null);
 
-      // Fetch swap requests
+      const employeeIds = empData?.map(e => e.id) || [];
+      
+      if (employeeIds.length === 0) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch swap requests for employees in this company
       const { data, error } = await supabase
         .from('shift_swap_requests')
         .select(`
@@ -123,6 +141,7 @@ const Swaps = () => {
           requester:employees!shift_swap_requests_requester_id_fkey(first_name, last_name, email),
           target:employees!shift_swap_requests_target_id_fkey(first_name, last_name, email)
         `)
+        .in('requester_id', employeeIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -136,8 +155,9 @@ const Swaps = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
-  }, [user?.id]);
+  }, [user?.id, currentCompany?.id]);
 
   const handleSubmit = async () => {
     if (!formData.targetId || !formData.originalDate || !formData.swapDate || !currentEmployeeId) {
@@ -249,6 +269,16 @@ const Swaps = () => {
 
   const pendingRequests = requests.filter((r) => r.status === 'pending');
   const otherEmployees = employees.filter((e) => e.id !== currentEmployeeId);
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Échanges de shifts">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout
@@ -456,7 +486,7 @@ const Swaps = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Tous les échanges</CardTitle>
-                <CardDescription>Historique de toutes les demandes d'échange</CardDescription>
+                <CardDescription>Historique des demandes d'échange</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -471,21 +501,30 @@ const Swaps = () => {
                         <TableHead>Échange avec</TableHead>
                         <TableHead>Dates</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead>Demandé le</TableHead>
+                        <TableHead>Date demande</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {requests.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            Aucun échange trouvé
+                            Aucune demande d'échange
                           </TableCell>
                         </TableRow>
                       ) : (
                         requests.map((request) => (
                           <TableRow key={request.id}>
                             <TableCell>
-                              {request.requester?.first_name} {request.requester?.last_name}
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-primary">
+                                    {request.requester?.first_name?.[0]}{request.requester?.last_name?.[0]}
+                                  </span>
+                                </div>
+                                <p className="font-medium">
+                                  {request.requester?.first_name} {request.requester?.last_name}
+                                </p>
+                              </div>
                             </TableCell>
                             <TableCell>
                               {request.target?.first_name} {request.target?.last_name}
@@ -498,7 +537,9 @@ const Swaps = () => {
                               </div>
                             </TableCell>
                             <TableCell>{statusBadge(request.status)}</TableCell>
-                            <TableCell>{format(new Date(request.created_at), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {format(new Date(request.created_at), 'dd/MM/yyyy')}
+                            </TableCell>
                           </TableRow>
                         ))
                       )}

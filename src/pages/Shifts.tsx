@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useCompany } from '@/contexts/CompanyContext';
 import {
   format,
   startOfMonth,
@@ -86,6 +87,7 @@ interface TimeOffRequest {
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 export default function ShiftsPage() {
+  const { currentCompany } = useCompany();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -105,27 +107,50 @@ export default function ShiftsPage() {
   });
 
   const fetchData = async () => {
+    if (!currentCompany?.id) {
+      setShifts([]);
+      setEmployees([]);
+      setTimeOffRequests([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const [shiftsRes, employeesRes, timeOffRes] = await Promise.all([
+      // First get employees for this company
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, status')
+        .eq('company_id', currentCompany.id);
+
+      if (employeesError) throw employeesError;
+      setEmployees(employeesData || []);
+
+      const employeeIds = employeesData?.map(e => e.id) || [];
+
+      if (employeeIds.length === 0) {
+        setShifts([]);
+        setTimeOffRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      const [shiftsRes, timeOffRes] = await Promise.all([
         supabase
           .from('shifts')
           .select('*, employee:employees(id, first_name, last_name)')
+          .in('employee_id', employeeIds)
           .order('date'),
-        supabase
-          .from('employees')
-          .select('id, first_name, last_name, status'),
         supabase
           .from('time_off_requests')
           .select('*')
-          .eq('status', 'approved'),
+          .eq('status', 'approved')
+          .in('employee_id', employeeIds),
       ]);
 
       if (shiftsRes.error) throw shiftsRes.error;
-      if (employeesRes.error) throw employeesRes.error;
       if (timeOffRes.error) throw timeOffRes.error;
 
       setShifts(shiftsRes.data || []);
-      setEmployees(employeesRes.data || []);
       setTimeOffRequests(timeOffRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -136,8 +161,9 @@ export default function ShiftsPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData();
-  }, []);
+  }, [currentCompany?.id]);
 
   const days = useMemo(() => {
     if (viewMode === 'month') {
@@ -271,6 +297,16 @@ export default function ShiftsPage() {
     };
     return labels[type] || type;
   };
+
+  if (!currentCompany) {
+    return (
+      <MainLayout title="Planning">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (loading) {
     return (
@@ -504,7 +540,7 @@ export default function ShiftsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Heure début</Label>
+                <Label>Heure de début</Label>
                 <Input
                   type="time"
                   value={formData.start_time}
@@ -512,7 +548,7 @@ export default function ShiftsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Heure fin</Label>
+                <Label>Heure de fin</Label>
                 <Input
                   type="time"
                   value={formData.end_time}
@@ -521,19 +557,19 @@ export default function ShiftsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Lieu</Label>
+              <Label>Lieu (optionnel)</Label>
               <Input
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ex: Bureau, Télétravail..."
+                placeholder="Ex: Bureau principal"
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>Notes (optionnel)</Label>
               <Input
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Notes optionnelles..."
+                placeholder="Notes supplémentaires..."
               />
             </div>
           </div>
@@ -547,7 +583,7 @@ export default function ShiftsPage() {
                 Supprimer
               </Button>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 ml-auto">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Annuler
               </Button>
