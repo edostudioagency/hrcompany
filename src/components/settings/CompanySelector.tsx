@@ -21,13 +21,11 @@ import { toast } from 'sonner';
 interface CompanySelectorProps {
   selectedCompanyId: string | null;
   onSelectCompany: (companyId: string | null) => void;
-  onCreateNew: () => void;
 }
 
 export function CompanySelector({ 
   selectedCompanyId, 
   onSelectCompany, 
-  onCreateNew 
 }: CompanySelectorProps) {
   const { companies, currentCompany, switchCompany, refreshCompanies } = useCompany();
   const { role } = useAuth();
@@ -77,15 +75,11 @@ export function CompanySelector({
   return (
     <>
       <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="pb-4">
           <CardTitle className="text-lg font-medium flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Vos entreprises
           </CardTitle>
-          <Button size="sm" onClick={onCreateNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle
-          </Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {companies.map((company) => (

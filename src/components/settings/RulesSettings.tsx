@@ -7,8 +7,10 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { Loader2, Save, ArrowLeftRight, Calendar, Clock } from 'lucide-react';
+
 interface CompanySettings {
   id: string;
   company_id: string;
@@ -22,10 +24,11 @@ interface CompanySettings {
   weekly_hours: number;
   leave_calculation_mode: 'jours_ouvres' | 'jours_ouvrables';
 }
+
 export function RulesSettings() {
+  const { currentCompany } = useCompany();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [formData, setFormData] = useState({
     allow_shift_swaps: true,
@@ -38,38 +41,41 @@ export function RulesSettings() {
     weekly_hours: 35,
     leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables'
   });
-  useEffect(() => {
-    fetchData();
-  }, []);
-  const fetchData = async () => {
-    try {
-      // First get the company
-      const {
-        data: companyData
-      } = await supabase.from('companies').select('id').limit(1).maybeSingle();
-      if (companyData) {
-        setCompanyId(companyData.id);
 
-        // Then get settings
-        const {
-          data: settingsData,
-          error
-        } = await supabase.from('company_settings').select('*').eq('company_id', companyData.id).maybeSingle();
-        if (error && error.code !== 'PGRST116') throw error;
-        if (settingsData) {
-          setSettings(settingsData as CompanySettings);
-          setFormData({
-            allow_shift_swaps: settingsData.allow_shift_swaps ?? true,
-            annual_paid_leave_days: Number(settingsData.annual_paid_leave_days) || 25,
-            paid_leave_per_month: Number(settingsData.paid_leave_per_month) || 2.08,
-            rtt_days_per_year: settingsData.rtt_days_per_year || 10,
-            sick_leave_accrual: settingsData.sick_leave_accrual ?? false,
-            sick_leave_accrual_rate: Number(settingsData.sick_leave_accrual_rate) || 0,
-            default_work_hours_per_day: Number(settingsData.default_work_hours_per_day) || 7,
-            weekly_hours: Number(settingsData.weekly_hours) || 35,
-            leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables'
-          });
-        }
+  useEffect(() => {
+    if (currentCompany?.id) {
+      fetchData();
+    }
+  }, [currentCompany?.id]);
+
+  const fetchData = async () => {
+    if (!currentCompany?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data: settingsData, error } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('company_id', currentCompany.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (settingsData) {
+        setSettings(settingsData as CompanySettings);
+        setFormData({
+          allow_shift_swaps: settingsData.allow_shift_swaps ?? true,
+          annual_paid_leave_days: Number(settingsData.annual_paid_leave_days) || 25,
+          paid_leave_per_month: Number(settingsData.paid_leave_per_month) || 2.08,
+          rtt_days_per_year: settingsData.rtt_days_per_year || 10,
+          sick_leave_accrual: settingsData.sick_leave_accrual ?? false,
+          sick_leave_accrual_rate: Number(settingsData.sick_leave_accrual_rate) || 0,
+          default_work_hours_per_day: Number(settingsData.default_work_hours_per_day) || 7,
+          weekly_hours: Number(settingsData.weekly_hours) || 35,
+          leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables'
+        });
+      } else {
+        setSettings(null);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -80,25 +86,27 @@ export function RulesSettings() {
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) {
+    if (!currentCompany?.id) {
       toast.error('Veuillez d\'abord créer une entreprise');
       return;
     }
     setSaving(true);
     try {
       if (settings) {
-        const {
-          error
-        } = await supabase.from('company_settings').update(formData).eq('id', settings.id);
+        const { error } = await supabase
+          .from('company_settings')
+          .update(formData)
+          .eq('id', settings.id);
         if (error) throw error;
       } else {
-        const {
-          data,
-          error
-        } = await supabase.from('company_settings').insert({
-          ...formData,
-          company_id: companyId
-        }).select().single();
+        const { data, error } = await supabase
+          .from('company_settings')
+          .insert({
+            ...formData,
+            company_id: currentCompany.id
+          })
+          .select()
+          .single();
         if (error) throw error;
         setSettings(data as CompanySettings);
       }
@@ -110,22 +118,28 @@ export function RulesSettings() {
       setSaving(false);
     }
   };
+
   if (loading) {
-    return <Card>
+    return (
+      <Card>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
-      </Card>;
+      </Card>
+    );
   }
-  if (!companyId) {
-    return <Card>
+
+  if (!currentCompany?.id) {
+    return (
+      <Card>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground">
-            Veuillez d'abord créer votre entreprise dans l'onglet "Entreprise"
+            Veuillez d'abord sélectionner une entreprise
           </p>
         </CardContent>
-      </Card>;
+      </Card>
+    );
   }
   return <form onSubmit={handleSubmit} className="space-y-6">
       {/* Shift Swaps */}
