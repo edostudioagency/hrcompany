@@ -67,7 +67,32 @@ export default function CreateCompany() {
 
       if (userCompanyError) throw userCompanyError;
 
-      // 3. Create default company_settings
+      // 3. Get user profile info
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      // 4. Create employee record for the admin
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .insert({
+          user_id: user.id,
+          company_id: newCompany.id,
+          first_name: profile?.first_name || user.email?.split('@')[0] || 'Admin',
+          last_name: profile?.last_name || '',
+          email: profile?.email || user.email || '',
+          status: 'active',
+          position: 'Administrateur',
+        });
+
+      if (employeeError) {
+        console.error('Error creating admin employee:', employeeError);
+        // Continue anyway
+      }
+
+      // 5. Create default company_settings
       const { error: settingsError } = await supabase
         .from('company_settings')
         .insert({
@@ -81,11 +106,11 @@ export default function CreateCompany() {
 
       toast.success('Entreprise créée avec succès');
       
-      // 4. Refresh companies and switch to new one
+      // 6. Refresh companies and switch to new one
       await refreshCompanies();
       switchCompany(newCompany.id);
       
-      // 5. Navigate to settings
+      // 7. Navigate to settings
       navigate('/settings');
     } catch (error) {
       console.error('Error creating company:', error);
