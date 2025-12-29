@@ -53,6 +53,11 @@ import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialo
 import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
 import { useCompany } from '@/contexts/CompanyContext';
 
+interface EmployeeInvitation {
+  invitation_token: string;
+  sent_at: string | null;
+}
+
 interface Employee {
   id: string;
   first_name: string;
@@ -68,12 +73,13 @@ interface Employee {
   contract_hours: number | null;
   gross_salary: number | null;
   invitation_sent_at: string | null;
-  invitation_token: string | null;
   salary_type: string | null;
   user_id: string | null;
   manager_id: string | null;
   created_at: string;
   is_executive: boolean;
+  // From employee_invitations table (joined) - can be single object or array depending on query
+  employee_invitations?: EmployeeInvitation | EmployeeInvitation[] | null;
 }
 
 const DAYS_OF_WEEK = [
@@ -156,7 +162,7 @@ export default function EmployeesPage() {
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select('*, employee_invitations(invitation_token, sent_at)')
         .eq('company_id', currentCompany.id)
         .order('created_at', { ascending: false });
 
@@ -195,7 +201,6 @@ export default function EmployeesPage() {
         position: formData.position || null,
         hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
         contract_type: formData.contract_type || null,
-        invitation_token: crypto.randomUUID(),
         company_id: currentCompany.id,
       };
 
@@ -215,6 +220,18 @@ export default function EmployeesPage() {
           .single();
 
         if (error) throw error;
+        
+        // Create invitation token in secure table
+        const { error: invitationError } = await supabase
+          .from('employee_invitations')
+          .insert({
+            employee_id: data.id,
+            invitation_token: crypto.randomUUID(),
+          });
+
+        if (invitationError) {
+          console.error('Error creating invitation:', invitationError);
+        }
         
         // Create default schedule for new employee (Mon-Fri 9-17)
         const scheduleData = DAYS_OF_WEEK.map((day) => ({

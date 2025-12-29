@@ -36,25 +36,49 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Find employee with this invitation token
-    const { data: employee, error: fetchError } = await supabaseAdmin
-      .from("employees")
-      .select("id, email, first_name, last_name, status, invitation_token")
+    // Find invitation with this token from the secure employee_invitations table
+    const { data: invitation, error: invitationError } = await supabaseAdmin
+      .from("employee_invitations")
+      .select("id, employee_id, invitation_token, expires_at")
       .eq("invitation_token", token)
       .maybeSingle();
 
-    if (fetchError) {
-      console.error("Error fetching employee:", fetchError);
+    if (invitationError) {
+      console.error("Error fetching invitation:", invitationError);
       return new Response(
         JSON.stringify({ error: "Erreur lors de la validation" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    if (!employee) {
-      console.log("No employee found with token:", token);
+    if (!invitation) {
+      console.log("No invitation found with token:", token);
       return new Response(
         JSON.stringify({ error: "Invitation invalide ou expirée" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Check if invitation has expired
+    if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+      console.log("Invitation expired:", token);
+      return new Response(
+        JSON.stringify({ error: "Cette invitation a expiré" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Get employee details
+    const { data: employee, error: fetchError } = await supabaseAdmin
+      .from("employees")
+      .select("id, email, first_name, last_name, status")
+      .eq("id", invitation.employee_id)
+      .maybeSingle();
+
+    if (fetchError || !employee) {
+      console.error("Error fetching employee:", fetchError);
+      return new Response(
+        JSON.stringify({ error: "Employé non trouvé" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

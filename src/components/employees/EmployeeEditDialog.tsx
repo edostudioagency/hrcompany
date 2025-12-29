@@ -26,6 +26,11 @@ import { Loader2, User, Briefcase, Clock, Mail, KeyRound, Shield } from 'lucide-
 import { DateInput } from '@/components/ui/date-input';
 import { RoleManagerSection } from './RoleManagerSection';
 
+interface EmployeeInvitation {
+  invitation_token: string;
+  sent_at: string | null;
+}
+
 interface Employee {
   id: string;
   first_name: string;
@@ -41,11 +46,12 @@ interface Employee {
   contract_hours: number | null;
   gross_salary: number | null;
   invitation_sent_at: string | null;
-  invitation_token: string | null;
   salary_type: string | null;
   user_id: string | null;
   manager_id: string | null;
   is_executive: boolean;
+  // From employee_invitations table (joined or fetched separately)
+  employee_invitations?: EmployeeInvitation | EmployeeInvitation[] | null;
 }
 
 interface Schedule {
@@ -288,8 +294,18 @@ export function EmployeeEditDialog({
   const handleSendInvitation = async () => {
     if (!employee) return;
 
-    // Ensure we have a valid invitation token from the database
-    if (!employee.invitation_token) {
+    // Get invitation token from the secure employee_invitations table
+    // Handle both array and single object formats
+    const invitations = employee.employee_invitations;
+    let invitationToken: string | undefined;
+    
+    if (Array.isArray(invitations)) {
+      invitationToken = invitations[0]?.invitation_token;
+    } else if (invitations) {
+      invitationToken = invitations.invitation_token;
+    }
+    
+    if (!invitationToken) {
       toast.error("Aucun token d'invitation trouvé. Veuillez contacter l'administrateur.");
       return;
     }
@@ -302,7 +318,7 @@ export function EmployeeEditDialog({
           recipientEmail: employee.email,
           recipientName: `${employee.first_name} ${employee.last_name}`,
           data: {
-            invitationToken: employee.invitation_token, // Use existing token from DB
+            invitationToken: invitationToken,
             email: employee.email,
           },
         },
@@ -310,6 +326,13 @@ export function EmployeeEditDialog({
 
       if (error) throw error;
 
+      // Update sent_at in employee_invitations table
+      await supabase
+        .from('employee_invitations')
+        .update({ sent_at: new Date().toISOString() })
+        .eq('employee_id', employee.id);
+
+      // Also update the legacy field for backwards compatibility
       await supabase
         .from('employees')
         .update({ invitation_sent_at: new Date().toISOString() })
