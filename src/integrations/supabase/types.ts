@@ -301,6 +301,41 @@ export type Database = {
           },
         ]
       }
+      employee_invitations: {
+        Row: {
+          created_at: string
+          employee_id: string
+          expires_at: string | null
+          id: string
+          invitation_token: string
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_invitations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_schedules: {
         Row: {
           created_at: string
