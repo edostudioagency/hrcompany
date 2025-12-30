@@ -88,9 +88,7 @@ export function ImageUpload({
       <div className="relative group">
         {variant === 'avatar' ? (
           <Avatar className={cn(sizeClasses[size], 'border-2 border-border')}>
-            {currentImageUrl ? (
-              <AvatarImage src={currentImageUrl} alt="Photo de profil" />
-            ) : null}
+            <AvatarImage src={currentImageUrl || undefined} alt="Photo de profil" />
             <AvatarFallback className="bg-primary/10 text-primary text-lg">
               {fallback}
             </AvatarFallback>
@@ -105,6 +103,7 @@ export function ImageUpload({
                 src={currentImageUrl} 
                 alt="Logo" 
                 className="w-full h-full object-contain"
+                key={currentImageUrl}
               />
             ) : (
               <Building2 className="h-8 w-8 text-muted-foreground" />
