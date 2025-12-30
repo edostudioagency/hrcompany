@@ -26,6 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { CompanyAvatar } from '@/components/ui/company-avatar';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -173,11 +174,12 @@ export function Sidebar() {
               <PopoverTrigger asChild>
                 <button className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left">
                   <div className="relative">
-                    <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-semibold text-sidebar-primary-foreground">
-                        {companyInitials}
-                      </span>
-                    </div>
+                    <CompanyAvatar 
+                      logoUrl={currentCompany?.logo_url} 
+                      name={companyName} 
+                      size="md"
+                      className="bg-sidebar-primary text-sidebar-primary-foreground"
+                    />
                     {currentCompanyNotifications > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full flex items-center justify-center text-[10px] text-destructive-foreground font-medium">
                         {currentCompanyNotifications > 9 ? '9+' : currentCompanyNotifications}
@@ -202,11 +204,12 @@ export function Sidebar() {
                 <div className="p-2">
                   <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
                     <div className="relative">
-                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="text-xs font-semibold text-primary-foreground">
-                          {companyInitials}
-                        </span>
-                      </div>
+                      <CompanyAvatar 
+                        logoUrl={currentCompany?.logo_url} 
+                        name={companyName} 
+                        size="sm"
+                        className="bg-primary text-primary-foreground"
+                      />
                       {currentCompanyNotifications > 0 && (
                         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
                           {currentCompanyNotifications}
@@ -243,11 +246,12 @@ export function Sidebar() {
                               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
                             >
                               <div className="relative">
-                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                                  <span className="text-xs font-semibold text-muted-foreground">
-                                    {initials}
-                                  </span>
-                                </div>
+                                <CompanyAvatar 
+                                  logoUrl={company.logo_url} 
+                                  name={company.name} 
+                                  size="sm"
+                                  className="bg-muted text-muted-foreground"
+                                />
                                 {notifCount > 0 && (
                                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
                                     {notifCount}
@@ -303,11 +307,12 @@ export function Sidebar() {
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <button className="relative">
-                  <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                    <span className="text-sm font-semibold text-sidebar-primary-foreground">
-                      {companyInitials}
-                    </span>
-                  </div>
+                  <CompanyAvatar 
+                    logoUrl={currentCompany?.logo_url} 
+                    name={companyName} 
+                    size="md"
+                    className="bg-sidebar-primary text-sidebar-primary-foreground"
+                  />
                   {currentCompanyNotifications > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full flex items-center justify-center text-[10px] text-destructive-foreground font-medium">
                       {currentCompanyNotifications > 9 ? '9+' : currentCompanyNotifications}
@@ -323,11 +328,12 @@ export function Sidebar() {
                 <div className="p-2">
                   <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent">
                     <div className="relative">
-                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="text-xs font-semibold text-primary-foreground">
-                          {companyInitials}
-                        </span>
-                      </div>
+                      <CompanyAvatar 
+                        logoUrl={currentCompany?.logo_url} 
+                        name={companyName} 
+                        size="sm"
+                        className="bg-primary text-primary-foreground"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{currentCompany?.name}</p>
@@ -359,11 +365,12 @@ export function Sidebar() {
                               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-left"
                             >
                               <div className="relative">
-                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                                  <span className="text-xs font-semibold text-muted-foreground">
-                                    {initials}
-                                  </span>
-                                </div>
+                                <CompanyAvatar 
+                                  logoUrl={company.logo_url} 
+                                  name={company.name} 
+                                  size="sm"
+                                  className="bg-muted text-muted-foreground"
+                                />
                                 {notifCount > 0 && (
                                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center text-[9px] text-destructive-foreground font-medium">
                                     {notifCount}
