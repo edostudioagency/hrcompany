@@ -1,31 +1,14 @@
-import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MapPin, Scale, Calculator } from 'lucide-react';
 import { CompanyInfoForm } from '@/components/settings/CompanyInfoForm';
-import { CompanySelector } from '@/components/settings/CompanySelector';
 import { LocationsManager } from '@/components/settings/LocationsManager';
 import { RulesSettings } from '@/components/settings/RulesSettings';
 import { AccountingSettings } from '@/components/settings/AccountingSettings';
 import { useCompany } from '@/contexts/CompanyContext';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function Settings() {
   const { currentCompany } = useCompany();
-  const { role } = useAuth();
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-
-  const isAdmin = role === 'admin';
-
-  useEffect(() => {
-    if (currentCompany && !selectedCompanyId) {
-      setSelectedCompanyId(currentCompany.id);
-    }
-  }, [currentCompany, selectedCompanyId]);
-
-  const handleSelectCompany = (companyId: string | null) => {
-    setSelectedCompanyId(companyId);
-  };
 
   return (
     <MainLayout title="Paramètres Entreprise">
@@ -35,13 +18,6 @@ export default function Settings() {
             Configurez les paramètres de votre entreprise
           </p>
         </div>
-
-        {isAdmin && (
-          <CompanySelector
-            selectedCompanyId={selectedCompanyId}
-            onSelectCompany={handleSelectCompany}
-          />
-        )}
 
         <Tabs defaultValue="company" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
@@ -64,7 +40,7 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="company">
-            <CompanyInfoForm companyId={selectedCompanyId} />
+            <CompanyInfoForm companyId={currentCompany?.id} />
           </TabsContent>
 
           <TabsContent value="locations">
