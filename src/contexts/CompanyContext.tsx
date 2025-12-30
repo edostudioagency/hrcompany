@@ -6,6 +6,7 @@ interface Company {
   id: string;
   name: string;
   legal_name?: string | null;
+  logo_url?: string | null;
 }
 
 interface CompanyContextType {
@@ -88,7 +89,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       if (role === 'admin') {
         const { data: userCompanies } = await supabase
           .from('user_companies')
-          .select('company_id, is_default, companies:company_id(id, name, legal_name)')
+          .select('company_id, is_default, companies:company_id(id, name, legal_name, logo_url)')
           .eq('user_id', user.id);
 
         if (userCompanies && userCompanies.length > 0) {
@@ -127,7 +128,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       // Fallback: get company from employee record
       const { data: employee } = await supabase
         .from('employees')
-        .select('company_id, companies:company_id(id, name, legal_name)')
+        .select('company_id, companies:company_id(id, name, legal_name, logo_url)')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -141,7 +142,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         if (role === 'admin' || role === 'manager') {
           const { data: allCompanies } = await supabase
             .from('companies')
-            .select('id, name, legal_name')
+            .select('id, name, legal_name, logo_url')
             .limit(10);
           
           if (allCompanies && allCompanies.length > 0) {
