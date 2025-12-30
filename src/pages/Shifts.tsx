@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/CompanyContext';
+import { DayAvatars } from '@/components/calendar/DayAvatars';
 import {
   format,
   startOfMonth,
@@ -65,6 +66,7 @@ interface Shift {
     id: string;
     first_name: string;
     last_name: string;
+    avatar_url: string | null;
   };
 }
 
@@ -73,6 +75,7 @@ interface Employee {
   first_name: string;
   last_name: string;
   status: string;
+  avatar_url: string | null;
 }
 
 interface TimeOffRequest {
@@ -119,7 +122,7 @@ export default function ShiftsPage() {
       // First get employees for this company
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, status')
+        .select('id, first_name, last_name, status, avatar_url')
         .eq('company_id', currentCompany.id);
 
       if (employeesError) throw employeesError;
@@ -137,7 +140,7 @@ export default function ShiftsPage() {
       const [shiftsRes, timeOffRes] = await Promise.all([
         supabase
           .from('shifts')
-          .select('*, employee:employees(id, first_name, last_name)')
+          .select('*, employee:employees(id, first_name, last_name, avatar_url)')
           .in('employee_id', employeeIds)
           .order('date'),
         supabase
@@ -456,38 +459,14 @@ export default function ShiftsPage() {
                       )}
                     </div>
 
-                    <div className="space-y-1 overflow-hidden">
-                      {/* Time off indicators */}
-                      {dayTimeOff.slice(0, 2).map((timeOff) => {
-                        const employee = getEmployeeById(timeOff.employee_id);
-                        return (
-                          <div
-                            key={timeOff.id}
-                            className="calendar-event bg-destructive/20 text-destructive text-xs px-1.5 py-0.5 rounded truncate"
-                          >
-                            {employee?.first_name[0]}. {employee?.last_name} - {getTimeOffLabel(timeOff.type)}
-                          </div>
-                        );
-                      })}
-
-                      {/* Shifts */}
-                      {dayShifts.slice(0, viewMode === 'week' ? 10 : 3).map((shift) => (
-                        <div
-                          key={shift.id}
-                          onClick={() => openEditShiftDialog(shift)}
-                          className="calendar-event bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:bg-primary/30"
-                        >
-                          {shift.start_time.slice(0, 5)} - {shift.employee?.first_name}
-                        </div>
-                      ))}
-
-                      {/* Overflow indicator */}
-                      {dayShifts.length + dayTimeOff.length > (viewMode === 'week' ? 10 : 3) && (
-                        <div className="text-xs text-muted-foreground pl-1">
-                          +{dayShifts.length + dayTimeOff.length - (viewMode === 'week' ? 10 : 3)} autres
-                        </div>
-                      )}
-                    </div>
+                    <DayAvatars
+                      shifts={dayShifts}
+                      timeOffs={dayTimeOff}
+                      employees={employees}
+                      maxVisible={viewMode === 'week' ? 6 : 4}
+                      onShiftClick={openEditShiftDialog}
+                      getTimeOffLabel={getTimeOffLabel}
+                    />
                   </div>
                 );
               })}
@@ -496,12 +475,12 @@ export default function ShiftsPage() {
             {/* Legend */}
             <div className="flex items-center gap-6 pt-4 border-t border-border/50 mt-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-primary/40" />
-                <span className="text-sm text-muted-foreground">Shift planifié</span>
+                <div className="w-3 h-3 rounded-full ring-2 ring-blue-500 bg-blue-100" />
+                <span className="text-sm text-muted-foreground">Présent (shift planifié)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-destructive/40" />
-                <span className="text-sm text-muted-foreground">Congé/Absence</span>
+                <div className="w-3 h-3 rounded-full ring-2 ring-red-500 bg-red-100" />
+                <span className="text-sm text-muted-foreground">Absent (congé/absence)</span>
               </div>
             </div>
           </CardContent>
