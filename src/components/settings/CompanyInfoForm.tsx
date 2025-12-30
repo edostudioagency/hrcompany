@@ -7,12 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, Building2 } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface CompanyInfoFormProps {
   companyId?: string | null;
 }
 
 export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
+  const { refreshCompanies } = useCompany();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -93,6 +95,8 @@ export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
         .eq('id', companyId);
 
       if (error) throw error;
+      
+      await refreshCompanies();
       toast.success('Entreprise mise à jour');
     } catch (error) {
       console.error('Error saving company:', error);
