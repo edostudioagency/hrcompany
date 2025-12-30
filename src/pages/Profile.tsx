@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { useCompany } from '@/contexts/CompanyContext';
 import {
   User,
   Mail,
@@ -81,6 +82,7 @@ const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'
 
 export default function Profile() {
   const { user } = useAuth();
+  const { currentCompany } = useCompany();
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
   const [schedules, setSchedules] = useState<EmployeeSchedule[]>([]);
@@ -88,22 +90,23 @@ export default function Profile() {
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && currentCompany?.id) {
       fetchProfileData();
     }
-  }, [user?.id]);
+  }, [user?.id, currentCompany?.id]);
 
   const fetchProfileData = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !currentCompany?.id) return;
 
     try {
       setLoading(true);
 
-      // Fetch employee data
+      // Fetch employee data for the current company
       const { data: empData, error: empError } = await supabase
         .from('employees')
         .select('*')
         .eq('user_id', user.id)
+        .eq('company_id', currentCompany.id)
         .maybeSingle();
 
       if (empError) throw empError;
