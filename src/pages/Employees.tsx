@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Search, Mail, Edit, Trash2, Clock, FileText, UserCheck, UserX } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Tooltip,
   TooltipContent,
@@ -78,6 +79,7 @@ interface Employee {
   manager_id: string | null;
   created_at: string;
   is_executive: boolean;
+  avatar_url: string | null;
   // From employee_invitations table (joined) - can be single object or array depending on query
   employee_invitations?: EmployeeInvitation | EmployeeInvitation[] | null;
 }
@@ -453,11 +455,12 @@ export default function EmployeesPage() {
                       <TableRow key={employee.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                              <span className="text-sm font-medium text-primary">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={employee.avatar_url || undefined} alt={`${employee.first_name} ${employee.last_name}`} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                                 {employee.first_name[0]}{employee.last_name[0]}
-                              </span>
-                            </div>
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <p className="font-medium">{employee.first_name} {employee.last_name}</p>
                               {employee.phone && (
