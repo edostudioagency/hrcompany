@@ -1,4 +1,5 @@
 import { MoreHorizontal, Edit, Trash2, Mail, UserCheck, UserX } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -118,12 +119,13 @@ export function EmployeeTable({
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={employee.avatarUrl || undefined} alt={`${employee.firstName} ${employee.lastName}`} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                         {employee.firstName[0]}
                         {employee.lastName[0]}
-                      </span>
-                    </div>
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <p className="font-medium text-foreground">
                         {employee.firstName} {employee.lastName}
