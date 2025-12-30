@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Users } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +62,7 @@ interface TimeOffRequest {
     first_name: string;
     last_name: string;
     email: string;
+    avatar_url: string | null;
   };
 }
 
@@ -162,7 +164,7 @@ const TimeOff = () => {
         .from('time_off_requests')
         .select(`
           *,
-          employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email)
+          employee:employees!time_off_requests_employee_id_fkey(first_name, last_name, email, avatar_url)
         `)
         .in('employee_id', employeeIds)
         .order('created_at', { ascending: false });
@@ -519,14 +521,22 @@ const TimeOff = () => {
                         ) : (
                           pendingRequests.map((request) => (
                             <TableRow key={request.id}>
-                              <TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={`${request.employee?.first_name} ${request.employee?.last_name}`} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                                    {request.employee?.first_name?.[0]}{request.employee?.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <div>
                                   <p className="font-medium">
                                     {request.employee?.first_name} {request.employee?.last_name}
                                   </p>
                                   <p className="text-xs text-muted-foreground">{request.employee?.email}</p>
                                 </div>
-                              </TableCell>
+                              </div>
+                            </TableCell>
                               <TableCell>{typeLabels[request.type] || request.type}</TableCell>
                               <TableCell>
                                 {format(new Date(request.start_date), 'dd/MM/yyyy')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
@@ -605,11 +615,12 @@ const TimeOff = () => {
                           <TableRow key={request.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <span className="text-xs font-medium text-primary">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={`${request.employee?.first_name} ${request.employee?.last_name}`} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
                                     {request.employee?.first_name?.[0]}{request.employee?.last_name?.[0]}
-                                  </span>
-                                </div>
+                                  </AvatarFallback>
+                                </Avatar>
                                 <div>
                                   <p className="font-medium">{request.employee?.first_name} {request.employee?.last_name}</p>
                                 </div>
