@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,13 +41,13 @@ export function Header({ title, subtitle }: HeaderProps) {
   const navigate = useNavigate();
   const { sidebarOpen } = useApp();
   const { user, role, signOut } = useAuth();
-  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
 
   useEffect(() => {
     if (user) {
       supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, avatar_url')
         .eq('id', user.id)
         .maybeSingle()
         .then(({ data }) => setProfile(data));
@@ -98,6 +98,9 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
+                  {profile?.avatar_url && (
+                    <AvatarImage src={profile.avatar_url} alt="Photo de profil" />
+                  )}
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {userInitials}
                   </AvatarFallback>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, Building2 } from 'lucide-react';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 interface CompanyInfoFormProps {
   companyId?: string | null;
@@ -14,6 +15,7 @@ interface CompanyInfoFormProps {
 export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     legal_name: '',
@@ -51,6 +53,7 @@ export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
           phone: data.phone || '',
           email: data.email || '',
         });
+        setLogoUrl(data.logo_url || null);
       }
     } catch (error) {
       console.error('Error fetching company:', error);
@@ -85,6 +88,7 @@ export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
           address: formData.address || null,
           phone: formData.phone || null,
           email: formData.email || null,
+          logo_url: logoUrl,
         })
         .eq('id', companyId);
 
@@ -131,6 +135,16 @@ export function CompanyInfoForm({ companyId }: CompanyInfoFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center pb-4 border-b">
+            <ImageUpload
+              currentImageUrl={logoUrl}
+              onImageChange={setLogoUrl}
+              folder={`companies/${companyId}`}
+              variant="logo"
+              size="lg"
+            />
+          </div>
+          
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nom de l'entreprise *</Label>

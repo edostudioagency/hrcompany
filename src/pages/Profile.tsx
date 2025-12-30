@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
+import { ImageUpload } from '@/components/ui/image-upload';
 import {
   User,
   Mail,
@@ -37,6 +38,7 @@ interface EmployeeData {
   contract_end_date: string | null;
   contract_hours: number | null;
   gross_salary: number | null;
+  avatar_url: string | null;
 }
 
 interface EmployeeSchedule {
@@ -138,6 +140,32 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarChange = async (url: string | null) => {
+    if (!employee) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ avatar_url: url })
+        .eq('id', employee.id);
+
+      if (error) throw error;
+
+      setEmployee({ ...employee, avatar_url: url });
+      
+      // Also update the profile table
+      if (user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: url })
+          .eq('id', user.id);
+      }
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
   const handleDownload = async (doc: EmployeeDocument) => {
     setDownloadingDoc(doc.id);
     try {
@@ -223,11 +251,14 @@ export default function Profile() {
     <MainLayout title="Mon Profil">
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-2xl font-semibold text-primary">
-              {employee.first_name[0]}{employee.last_name[0]}
-            </span>
-          </div>
+          <ImageUpload
+            currentImageUrl={employee.avatar_url}
+            onImageChange={handleAvatarChange}
+            folder={`employees/${employee.id}`}
+            fallback={`${employee.first_name[0]}${employee.last_name[0]}`}
+            variant="avatar"
+            size="lg"
+          />
           <div>
             <h1 className="text-2xl font-bold">
               {employee.first_name} {employee.last_name}

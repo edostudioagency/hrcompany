@@ -92,6 +92,7 @@ export type Database = {
           email: string | null
           id: string
           legal_name: string | null
+          logo_url: string | null
           name: string
           phone: string | null
           siret: string | null
@@ -103,6 +104,7 @@ export type Database = {
           email?: string | null
           id?: string
           legal_name?: string | null
+          logo_url?: string | null
           name: string
           phone?: string | null
           siret?: string | null
@@ -114,6 +116,7 @@ export type Database = {
           email?: string | null
           id?: string
           legal_name?: string | null
+          logo_url?: string | null
           name?: string
           phone?: string | null
           siret?: string | null
@@ -379,6 +382,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          avatar_url: string | null
           company_id: string | null
           contract_end_date: string | null
           contract_hours: number | null
@@ -404,6 +408,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_url?: string | null
           company_id?: string | null
           contract_end_date?: string | null
           contract_hours?: number | null
@@ -429,6 +434,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_url?: string | null
           company_id?: string | null
           contract_end_date?: string | null
           contract_hours?: number | null
@@ -557,6 +563,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           first_name: string | null
@@ -565,6 +572,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           first_name?: string | null
@@ -573,6 +581,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           first_name?: string | null
