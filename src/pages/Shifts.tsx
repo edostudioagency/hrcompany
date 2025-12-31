@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -21,10 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DayAvatars } from '@/components/calendar/DayAvatars';
+import { EmployeeDayDetailDialog } from '@/components/calendar/EmployeeDayDetailDialog';
 import {
   format,
   startOfMonth,
@@ -62,11 +62,13 @@ interface Shift {
   location: string | null;
   status: string;
   notes: string | null;
+  isFromSchedule?: boolean;
   employee?: {
     id: string;
     first_name: string;
     last_name: string;
     avatar_url: string | null;
+    position?: string | null;
   };
 }
 
@@ -76,6 +78,7 @@ interface Employee {
   last_name: string;
   status: string;
   avatar_url: string | null;
+  position?: string | null;
 }
 
 interface EmployeeSchedule {
@@ -96,6 +99,17 @@ interface TimeOffRequest {
   type: string;
 }
 
+interface Location {
+  id: string;
+  name: string;
+}
+
+interface DragData {
+  employee: Employee;
+  shift: Shift;
+  sourceDate: Date;
+}
+
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 export default function ShiftsPage() {
@@ -106,10 +120,27 @@ export default function ShiftsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeSchedules, setEmployeeSchedules] = useState<EmployeeSchedule[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
+
+  // Detail dialog state
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
+  const [selectedShiftData, setSelectedShiftData] = useState<{
+    startTime: string;
+    endTime: string;
+    location: string;
+    shiftId?: string;
+    isFromSchedule: boolean;
+  } | null>(null);
+
+  // Drag and drop state
+  const [dragData, setDragData] = useState<DragData | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -125,6 +156,7 @@ export default function ShiftsPage() {
       setEmployees([]);
       setEmployeeSchedules([]);
       setTimeOffRequests([]);
+      setLocations([]);
       setLoading(false);
       return;
     }
@@ -133,7 +165,7 @@ export default function ShiftsPage() {
       // First get employees for this company
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, status, avatar_url')
+        .select('id, first_name, last_name, status, avatar_url, position')
         .eq('company_id', currentCompany.id);
 
       if (employeesError) throw employeesError;
@@ -149,10 +181,10 @@ export default function ShiftsPage() {
         return;
       }
 
-      const [shiftsRes, schedulesRes, timeOffRes] = await Promise.all([
+      const [shiftsRes, schedulesRes, timeOffRes, locationsRes] = await Promise.all([
         supabase
           .from('shifts')
-          .select('*, employee:employees(id, first_name, last_name, avatar_url)')
+          .select('*, employee:employees(id, first_name, last_name, avatar_url, position)')
           .in('employee_id', employeeIds)
           .order('date'),
         supabase
@@ -164,6 +196,11 @@ export default function ShiftsPage() {
           .select('*')
           .eq('status', 'approved')
           .in('employee_id', employeeIds),
+        supabase
+          .from('company_locations')
+          .select('id, name')
+          .eq('company_id', currentCompany.id)
+          .eq('is_active', true),
       ]);
 
       if (shiftsRes.error) throw shiftsRes.error;
@@ -173,6 +210,7 @@ export default function ShiftsPage() {
       setShifts(shiftsRes.data || []);
       setEmployeeSchedules(schedulesRes.data || []);
       setTimeOffRequests(timeOffRes.data || []);
+      setLocations(locationsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erreur lors du chargement des données');
@@ -207,44 +245,61 @@ export default function ShiftsPage() {
     );
 
   // Get employees scheduled to work on a given day based on their weekly schedule
+  // Also includes any custom shifts for that day
   const getScheduledEmployeesForDay = (day: Date) => {
-    // date-fns getDay returns 0 for Sunday, 1 for Monday, etc.
-    // Our employee_schedules uses the same: 0 = Sunday, 1 = Monday, etc.
     const dayOfWeek = day.getDay();
+    const dateStr = format(day, 'yyyy-MM-dd');
     
     // Get employee IDs who are on time off this day
     const absentEmployeeIds = new Set(
       getTimeOffForDay(day).map(t => t.employee_id)
     );
     
+    // Get custom shifts for this day
+    const customShifts = getShiftsForDay(day);
+    const customShiftEmployeeIds = new Set(customShifts.map(s => s.employee_id));
+    
     // Find schedules for this day of week where is_working_day is true
+    // Exclude employees who have custom shifts (they'll be shown from shifts instead)
+    // Exclude employees who are absent
     const workingSchedules = employeeSchedules.filter(
       schedule => 
         schedule.day_of_week === dayOfWeek && 
         schedule.is_working_day &&
-        !absentEmployeeIds.has(schedule.employee_id)
+        !absentEmployeeIds.has(schedule.employee_id) &&
+        !customShiftEmployeeIds.has(schedule.employee_id)
     );
     
-    // Map to shift-like objects for compatibility with DayAvatars
-    return workingSchedules.map(schedule => {
+    // Map schedules to shift-like objects
+    const scheduleShifts = workingSchedules.map(schedule => {
       const employee = employees.find(e => e.id === schedule.employee_id);
       return {
-        id: `schedule-${schedule.employee_id}-${format(day, 'yyyy-MM-dd')}`,
+        id: `schedule-${schedule.employee_id}-${dateStr}`,
         employee_id: schedule.employee_id,
+        date: dateStr,
         start_time: schedule.start_time || '09:00',
         end_time: schedule.end_time || '17:00',
+        location: null,
+        status: 'planned',
+        notes: null,
+        isFromSchedule: true,
         employee: employee ? {
           id: employee.id,
           first_name: employee.first_name,
           last_name: employee.last_name,
           avatar_url: employee.avatar_url,
+          position: employee.position,
         } : undefined,
       };
     });
+    
+    // Combine custom shifts (excluding absent) with schedule-based shifts
+    const validCustomShifts = customShifts
+      .filter(s => !absentEmployeeIds.has(s.employee_id))
+      .map(s => ({ ...s, isFromSchedule: false }));
+    
+    return [...validCustomShifts, ...scheduleShifts];
   };
-
-  const getEmployeeById = (id: string) =>
-    employees.find((e) => e.id === id);
 
   const navigatePrevious = () => {
     if (viewMode === 'month') {
@@ -288,6 +343,197 @@ export default function ShiftsPage() {
       notes: shift.notes || '',
     });
     setDialogOpen(true);
+  };
+
+  // Handle click on a shift/presence avatar
+  const handleShiftClick = (shift: Shift, employee: Employee, date: Date) => {
+    setSelectedEmployee(employee);
+    setSelectedDayDate(date);
+    setSelectedShiftData({
+      startTime: shift.start_time?.slice(0, 5) || '09:00',
+      endTime: shift.end_time?.slice(0, 5) || '17:00',
+      location: shift.location || '',
+      shiftId: shift.isFromSchedule ? undefined : shift.id,
+      isFromSchedule: shift.isFromSchedule || false,
+    });
+    setDetailDialogOpen(true);
+  };
+
+  // Save custom hours for a specific day
+  const handleSaveHours = async (
+    employeeId: string,
+    date: Date,
+    startTime: string,
+    endTime: string,
+    location: string
+  ) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    try {
+      // Check if a shift already exists for this employee on this date
+      const existingShift = shifts.find(
+        s => s.employee_id === employeeId && s.date === dateStr
+      );
+      
+      if (existingShift) {
+        // Update existing shift
+        const { error } = await supabase
+          .from('shifts')
+          .update({
+            start_time: startTime,
+            end_time: endTime,
+            location: location || null,
+          })
+          .eq('id', existingShift.id);
+        
+        if (error) throw error;
+        toast.success('Horaires mis à jour');
+      } else {
+        // Create new shift
+        const { error } = await supabase.from('shifts').insert({
+          employee_id: employeeId,
+          date: dateStr,
+          start_time: startTime,
+          end_time: endTime,
+          location: location || null,
+          status: 'planned',
+        });
+        
+        if (error) throw error;
+        toast.success('Horaires personnalisés créés');
+      }
+      
+      fetchData();
+    } catch (error) {
+      console.error('Error saving hours:', error);
+      toast.error('Erreur lors de la sauvegarde');
+      throw error;
+    }
+  };
+
+  // Create a time off request for a specific day
+  const handleCreateTimeOff = async (
+    employeeId: string,
+    date: Date,
+    type: string
+  ) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    try {
+      // Create approved time off request (since manager is doing it)
+      const { error } = await supabase.from('time_off_requests').insert({
+        employee_id: employeeId,
+        start_date: dateStr,
+        end_date: dateStr,
+        type,
+        status: 'approved',
+        reason: 'Créé depuis le planning',
+      });
+      
+      if (error) throw error;
+      
+      // If there was a custom shift for this day, delete it
+      const existingShift = shifts.find(
+        s => s.employee_id === employeeId && s.date === dateStr
+      );
+      if (existingShift) {
+        await supabase.from('shifts').delete().eq('id', existingShift.id);
+      }
+      
+      toast.success('Absence enregistrée');
+      fetchData();
+    } catch (error) {
+      console.error('Error creating time off:', error);
+      toast.error("Erreur lors de l'enregistrement de l'absence");
+      throw error;
+    }
+  };
+
+  // Delete a custom shift
+  const handleDeleteCustomShift = async (shiftId: string) => {
+    try {
+      const { error } = await supabase.from('shifts').delete().eq('id', shiftId);
+      if (error) throw error;
+      toast.success('Horaires personnalisés supprimés');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting shift:', error);
+      toast.error('Erreur lors de la suppression');
+      throw error;
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, employee: Employee, shift: Shift, date: Date) => {
+    setDragData({ employee, shift, sourceDate: date });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDragData(null);
+    setDragOverDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!dragOverDate || !isSameDay(dragOverDate, date)) {
+      setDragOverDate(date);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDate(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    
+    if (!dragData) return;
+    
+    const { employee, shift, sourceDate } = dragData;
+    
+    // Don't do anything if dropped on same day
+    if (isSameDay(sourceDate, targetDate)) {
+      setDragData(null);
+      return;
+    }
+    
+    const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+    
+    try {
+      // Check if employee is on time off on target date
+      const isOnTimeOff = getTimeOffForDay(targetDate).some(
+        t => t.employee_id === employee.id
+      );
+      
+      if (isOnTimeOff) {
+        toast.error('Impossible de déplacer : employé en congé ce jour');
+        setDragData(null);
+        return;
+      }
+      
+      // Create a shift on the target date with the same hours
+      const { error } = await supabase.from('shifts').insert({
+        employee_id: employee.id,
+        date: targetDateStr,
+        start_time: shift.start_time,
+        end_time: shift.end_time,
+        location: shift.location,
+        status: 'planned',
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`${employee.first_name} déplacé au ${format(targetDate, 'd MMMM', { locale: fr })}`);
+      fetchData();
+    } catch (error) {
+      console.error('Error moving shift:', error);
+      toast.error('Erreur lors du déplacement');
+    }
+    
+    setDragData(null);
   };
 
   const handleSubmit = async () => {
@@ -402,7 +648,7 @@ export default function ShiftsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{shifts.filter((s) => s.status === 'planned').length}</p>
-                  <p className="text-sm text-muted-foreground">Shifts planifiés</p>
+                  <p className="text-sm text-muted-foreground">Shifts personnalisés</p>
                 </div>
               </div>
             </CardContent>
@@ -477,10 +723,11 @@ export default function ShiftsPage() {
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-px bg-border/30">
               {days.map((day, idx) => {
-                const dayShifts = getShiftsForDay(day);
+                const dayScheduledShifts = getScheduledEmployeesForDay(day);
                 const dayTimeOff = getTimeOffForDay(day);
                 const isCurrentMonth = isSameMonth(day, currentDate);
                 const isCurrentDay = isToday(day);
+                const isDragOver = dragOverDate && isSameDay(dragOverDate, day);
 
                 return (
                   <div
@@ -489,8 +736,12 @@ export default function ShiftsPage() {
                       'min-h-[100px] p-2 bg-card transition-colors relative group',
                       viewMode === 'week' && 'min-h-[200px]',
                       !isCurrentMonth && 'bg-muted/30',
-                      isCurrentDay && 'bg-primary/5 ring-1 ring-primary/20'
+                      isCurrentDay && 'bg-primary/5 ring-1 ring-primary/20',
+                      isDragOver && 'bg-primary/10 ring-2 ring-primary/40'
                     )}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span
@@ -515,11 +766,15 @@ export default function ShiftsPage() {
                     </div>
 
                     <DayAvatars
-                      shifts={getScheduledEmployeesForDay(day)}
+                      shifts={dayScheduledShifts}
                       timeOffs={dayTimeOff}
                       employees={employees}
                       maxVisible={viewMode === 'week' ? 6 : 4}
                       getTimeOffLabel={getTimeOffLabel}
+                      onShiftClick={(shift, employee) => handleShiftClick(shift as Shift, employee as Employee, day)}
+                      onDragStart={(e, employee, shift) => handleDragStart(e, employee as Employee, shift as Shift, day)}
+                      onDragEnd={handleDragEnd}
+                      isDragging={dragData?.employee?.id ? dayScheduledShifts.some(s => s.employee_id === dragData.employee.id) : false}
                     />
                   </div>
                 );
@@ -536,10 +791,31 @@ export default function ShiftsPage() {
                 <div className="w-3 h-3 rounded-full ring-2 ring-red-500 bg-red-100" />
                 <span className="text-sm text-muted-foreground">Absent (congé/absence)</span>
               </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>💡</span>
+                <span>Cliquez sur un avatar pour modifier, glissez pour déplacer</span>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Employee Day Detail Dialog */}
+      <EmployeeDayDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        employee={selectedEmployee as any}
+        date={selectedDayDate}
+        startTime={selectedShiftData?.startTime || '09:00'}
+        endTime={selectedShiftData?.endTime || '17:00'}
+        location={selectedShiftData?.location}
+        shiftId={selectedShiftData?.shiftId}
+        isFromSchedule={selectedShiftData?.isFromSchedule || false}
+        onSaveHours={handleSaveHours}
+        onCreateTimeOff={handleCreateTimeOff}
+        onDeleteShift={selectedShiftData?.shiftId ? handleDeleteCustomShift : undefined}
+        locations={locations}
+      />
 
       {/* Add/Edit Shift Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -591,11 +867,22 @@ export default function ShiftsPage() {
             </div>
             <div className="space-y-2">
               <Label>Lieu (optionnel)</Label>
-              <Input
+              <Select
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ex: Bureau principal"
-              />
+                onValueChange={(value) => setFormData({ ...formData, location: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un lieu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun lieu</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.name}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Notes (optionnel)</Label>
