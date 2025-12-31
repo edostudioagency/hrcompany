@@ -78,6 +78,15 @@ interface Employee {
   avatar_url: string | null;
 }
 
+interface EmployeeSchedule {
+  id: string;
+  employee_id: string;
+  day_of_week: number;
+  is_working_day: boolean;
+  start_time: string | null;
+  end_time: string | null;
+}
+
 interface TimeOffRequest {
   id: string;
   employee_id: string;
@@ -95,6 +104,7 @@ export default function ShiftsPage() {
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeeSchedules, setEmployeeSchedules] = useState<EmployeeSchedule[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -113,6 +123,7 @@ export default function ShiftsPage() {
     if (!currentCompany?.id) {
       setShifts([]);
       setEmployees([]);
+      setEmployeeSchedules([]);
       setTimeOffRequests([]);
       setLoading(false);
       return;
@@ -132,17 +143,22 @@ export default function ShiftsPage() {
 
       if (employeeIds.length === 0) {
         setShifts([]);
+        setEmployeeSchedules([]);
         setTimeOffRequests([]);
         setLoading(false);
         return;
       }
 
-      const [shiftsRes, timeOffRes] = await Promise.all([
+      const [shiftsRes, schedulesRes, timeOffRes] = await Promise.all([
         supabase
           .from('shifts')
           .select('*, employee:employees(id, first_name, last_name, avatar_url)')
           .in('employee_id', employeeIds)
           .order('date'),
+        supabase
+          .from('employee_schedules')
+          .select('*')
+          .in('employee_id', employeeIds),
         supabase
           .from('time_off_requests')
           .select('*')
@@ -151,9 +167,11 @@ export default function ShiftsPage() {
       ]);
 
       if (shiftsRes.error) throw shiftsRes.error;
+      if (schedulesRes.error) throw schedulesRes.error;
       if (timeOffRes.error) throw timeOffRes.error;
 
       setShifts(shiftsRes.data || []);
+      setEmployeeSchedules(schedulesRes.data || []);
       setTimeOffRequests(timeOffRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -187,6 +205,43 @@ export default function ShiftsPage() {
     timeOffRequests.filter(
       (t) => new Date(t.start_date) <= day && new Date(t.end_date) >= day
     );
+
+  // Get employees scheduled to work on a given day based on their weekly schedule
+  const getScheduledEmployeesForDay = (day: Date) => {
+    // date-fns getDay returns 0 for Sunday, 1 for Monday, etc.
+    // Our employee_schedules uses the same: 0 = Sunday, 1 = Monday, etc.
+    const dayOfWeek = day.getDay();
+    
+    // Get employee IDs who are on time off this day
+    const absentEmployeeIds = new Set(
+      getTimeOffForDay(day).map(t => t.employee_id)
+    );
+    
+    // Find schedules for this day of week where is_working_day is true
+    const workingSchedules = employeeSchedules.filter(
+      schedule => 
+        schedule.day_of_week === dayOfWeek && 
+        schedule.is_working_day &&
+        !absentEmployeeIds.has(schedule.employee_id)
+    );
+    
+    // Map to shift-like objects for compatibility with DayAvatars
+    return workingSchedules.map(schedule => {
+      const employee = employees.find(e => e.id === schedule.employee_id);
+      return {
+        id: `schedule-${schedule.employee_id}-${format(day, 'yyyy-MM-dd')}`,
+        employee_id: schedule.employee_id,
+        start_time: schedule.start_time || '09:00',
+        end_time: schedule.end_time || '17:00',
+        employee: employee ? {
+          id: employee.id,
+          first_name: employee.first_name,
+          last_name: employee.last_name,
+          avatar_url: employee.avatar_url,
+        } : undefined,
+      };
+    });
+  };
 
   const getEmployeeById = (id: string) =>
     employees.find((e) => e.id === id);
@@ -460,11 +515,10 @@ export default function ShiftsPage() {
                     </div>
 
                     <DayAvatars
-                      shifts={dayShifts}
+                      shifts={getScheduledEmployeesForDay(day)}
                       timeOffs={dayTimeOff}
                       employees={employees}
                       maxVisible={viewMode === 'week' ? 6 : 4}
-                      onShiftClick={openEditShiftDialog}
                       getTimeOffLabel={getTimeOffLabel}
                     />
                   </div>
@@ -476,7 +530,7 @@ export default function ShiftsPage() {
             <div className="flex items-center gap-6 pt-4 border-t border-border/50 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full ring-2 ring-blue-500 bg-blue-100" />
-                <span className="text-sm text-muted-foreground">Présent (shift planifié)</span>
+                <span className="text-sm text-muted-foreground">Présent (jour travaillé)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full ring-2 ring-red-500 bg-red-100" />
