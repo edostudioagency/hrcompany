@@ -9,14 +9,20 @@ interface Company {
   logo_url?: string | null;
 }
 
+interface CompanySettings {
+  allow_shift_swaps: boolean;
+}
+
 interface CompanyContextType {
   currentCompany: Company | null;
   companies: Company[];
   isLoading: boolean;
   hasMultipleCompanies: boolean;
   companyNotifications: Record<string, number>;
+  companySettings: CompanySettings | null;
   switchCompany: (companyId: string) => void;
   refreshCompanies: () => Promise<void>;
+  refreshCompanySettings: () => Promise<void>;
   addCompany: (company: Company) => void;
 }
 
@@ -28,6 +34,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [companyNotifications, setCompanyNotifications] = useState<Record<string, number>>({});
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
 
   const fetchNotifications = useCallback(async (companyIds: string[]) => {
     if (companyIds.length === 0) return;
@@ -179,6 +186,36 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     await fetchCompanies();
   };
 
+  const fetchCompanySettings = useCallback(async () => {
+    if (!currentCompany?.id) {
+      setCompanySettings(null);
+      return;
+    }
+    
+    try {
+      const { data } = await supabase
+        .from('company_settings')
+        .select('allow_shift_swaps')
+        .eq('company_id', currentCompany.id)
+        .maybeSingle();
+      
+      setCompanySettings({
+        allow_shift_swaps: data?.allow_shift_swaps ?? true,
+      });
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+      setCompanySettings({ allow_shift_swaps: true });
+    }
+  }, [currentCompany?.id]);
+
+  useEffect(() => {
+    fetchCompanySettings();
+  }, [fetchCompanySettings]);
+
+  const refreshCompanySettings = async () => {
+    await fetchCompanySettings();
+  };
+
   const addCompany = (company: Company) => {
     setCompanies(prev => [...prev, company]);
   };
@@ -191,8 +228,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         isLoading,
         hasMultipleCompanies: companies.length > 1,
         companyNotifications,
+        companySettings,
         switchCompany,
         refreshCompanies,
+        refreshCompanySettings,
         addCompany,
       }}
     >

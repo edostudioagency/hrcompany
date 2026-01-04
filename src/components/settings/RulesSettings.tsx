@@ -26,7 +26,7 @@ interface CompanySettings {
 }
 
 export function RulesSettings() {
-  const { currentCompany } = useCompany();
+  const { currentCompany, refreshCompanySettings } = useCompany();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
@@ -111,6 +111,7 @@ export function RulesSettings() {
         setSettings(data as CompanySettings);
       }
       toast.success('Paramètres enregistrés');
+      await refreshCompanySettings();
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Erreur lors de la sauvegarde');
