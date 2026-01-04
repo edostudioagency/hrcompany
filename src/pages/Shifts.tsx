@@ -26,6 +26,9 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { DayAvatars } from '@/components/calendar/DayAvatars';
 import { DayDetailDialog } from '@/components/calendar/DayDetailDialog';
 import { EmployeeDayDetailDialog } from '@/components/calendar/EmployeeDayDetailDialog';
+import { EmployeesListDialog } from '@/components/shifts/EmployeesListDialog';
+import { CustomShiftsListDialog } from '@/components/shifts/CustomShiftsListDialog';
+import { TimeOffListDialog } from '@/components/shifts/TimeOffListDialog';
 import {
   format,
   startOfMonth,
@@ -151,6 +154,11 @@ export default function ShiftsPage() {
 
   // Filter state
   const [showOnlyCustomShifts, setShowOnlyCustomShifts] = useState(false);
+
+  // Stat cards dialogs state
+  const [employeesListOpen, setEmployeesListOpen] = useState(false);
+  const [customShiftsListOpen, setCustomShiftsListOpen] = useState(false);
+  const [timeOffListOpen, setTimeOffListOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -667,7 +675,10 @@ export default function ShiftsPage() {
       <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setEmployeesListOpen(true)}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-primary/10">
@@ -680,7 +691,10 @@ export default function ShiftsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setCustomShiftsListOpen(true)}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-accent/10">
@@ -693,7 +707,10 @@ export default function ShiftsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setTimeOffListOpen(true)}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-destructive/10">
@@ -994,6 +1011,41 @@ export default function ShiftsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Stat cards dialogs */}
+      <EmployeesListDialog
+        open={employeesListOpen}
+        onOpenChange={setEmployeesListOpen}
+        employees={employees}
+      />
+
+      <CustomShiftsListDialog
+        open={customShiftsListOpen}
+        onOpenChange={setCustomShiftsListOpen}
+        shifts={shifts}
+        locations={locations}
+        onEditShift={(shift) => {
+          setCustomShiftsListOpen(false);
+          setEditingShift(shift);
+          setSelectedDate(new Date(shift.date));
+          setFormData({
+            employee_id: shift.employee_id,
+            start_time: shift.start_time.slice(0, 5),
+            end_time: shift.end_time.slice(0, 5),
+            location: shift.location || '',
+            notes: shift.notes || '',
+          });
+          setDialogOpen(true);
+        }}
+        onDeleteShift={handleDeleteShift}
+      />
+
+      <TimeOffListDialog
+        open={timeOffListOpen}
+        onOpenChange={setTimeOffListOpen}
+        timeOffRequests={timeOffRequests}
+        employees={employees}
+      />
     </MainLayout>
   );
 }
