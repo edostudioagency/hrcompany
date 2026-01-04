@@ -82,7 +82,7 @@ export function Sidebar() {
     };
 
     fetchCompanySettings();
-  }, [currentCompany?.id]);
+  }, [currentCompany?.id, location.pathname]);
 
   const getBadgeCount = (href: string) => {
     if (href === '/time-off') return badgeCounts.timeOff;
