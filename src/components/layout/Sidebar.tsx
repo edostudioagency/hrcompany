@@ -48,6 +48,7 @@ export function Sidebar() {
   const { currentCompany, companies, hasMultipleCompanies, switchCompany, companyNotifications } = useCompany();
   const [badgeCounts, setBadgeCounts] = useState({ timeOff: 0, swaps: 0 });
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [allowShiftSwaps, setAllowShiftSwaps] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchBadgeCounts = async () => {
@@ -66,6 +67,22 @@ export function Sidebar() {
 
     fetchBadgeCounts();
   }, [role]);
+
+  useEffect(() => {
+    const fetchCompanySettings = async () => {
+      if (!currentCompany?.id) return;
+      
+      const { data } = await supabase
+        .from('company_settings')
+        .select('allow_shift_swaps')
+        .eq('company_id', currentCompany.id)
+        .maybeSingle();
+      
+      setAllowShiftSwaps(data?.allow_shift_swaps ?? true);
+    };
+
+    fetchCompanySettings();
+  }, [currentCompany?.id]);
 
   const getBadgeCount = (href: string) => {
     if (href === '/time-off') return badgeCounts.timeOff;
@@ -131,6 +148,8 @@ export function Sidebar() {
         {navigation.map((item) => {
           // Hide manager-only items for employees
           if (item.managerOnly && !isManagerOrAdmin) return null;
+          // Hide swaps tab if disabled in company settings
+          if (item.href === '/swaps' && allowShiftSwaps === false) return null;
 
           const isActive = location.pathname === item.href;
           const badgeCount = item.hasBadge && isManagerOrAdmin ? getBadgeCount(item.href) : 0;
