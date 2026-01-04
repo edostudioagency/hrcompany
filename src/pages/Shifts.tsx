@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DayAvatars } from '@/components/calendar/DayAvatars';
+import { DayDetailDialog } from '@/components/calendar/DayDetailDialog';
 import { EmployeeDayDetailDialog } from '@/components/calendar/EmployeeDayDetailDialog';
 import {
   format,
@@ -51,6 +52,8 @@ import {
   Users,
   Clock,
   Trash2,
+  Maximize2,
+  Filter,
 } from 'lucide-react';
 
 interface Shift {
@@ -141,6 +144,13 @@ export default function ShiftsPage() {
   // Drag and drop state
   const [dragData, setDragData] = useState<DragData | null>(null);
   const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+
+  // Day detail dialog state
+  const [dayDetailDialogOpen, setDayDetailDialogOpen] = useState(false);
+  const [dayDetailDate, setDayDetailDate] = useState<Date | null>(null);
+
+  // Filter state
+  const [showOnlyCustomShifts, setShowOnlyCustomShifts] = useState(false);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -298,6 +308,11 @@ export default function ShiftsPage() {
     const validCustomShifts = customShifts
       .filter(s => !absentEmployeeIds.has(s.employee_id) && s.status !== 'cancelled')
       .map(s => ({ ...s, isFromSchedule: false }));
+    
+    // If filter is active, only return custom shifts
+    if (showOnlyCustomShifts) {
+      return validCustomShifts;
+    }
     
     return [...validCustomShifts, ...scheduleShifts];
   };
@@ -710,6 +725,14 @@ export default function ShiftsPage() {
               </CardTitle>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant={showOnlyCustomShifts ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setShowOnlyCustomShifts(!showOnlyCustomShifts)}
+              >
+                <Filter className="h-4 w-4 mr-1" />
+                Personnalisés
+              </Button>
               <Button variant="outline" size="sm" onClick={goToToday}>
                 Aujourd'hui
               </Button>
@@ -779,14 +802,29 @@ export default function ShiftsPage() {
                         {format(day, 'd')}
                       </span>
                       {isCurrentMonth && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => openAddShiftDialog(day)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
+                        <div className="flex gap-0.5">
+                          {(dayScheduledShifts.length + dayTimeOff.length > (viewMode === 'week' ? 6 : 4)) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => {
+                                setDayDetailDate(day);
+                                setDayDetailDialogOpen(true);
+                              }}
+                            >
+                              <Maximize2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => openAddShiftDialog(day)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
                       )}
                     </div>
 
@@ -824,6 +862,23 @@ export default function ShiftsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Day Detail Dialog - Full view of a day */}
+      <DayDetailDialog
+        open={dayDetailDialogOpen}
+        onOpenChange={setDayDetailDialogOpen}
+        date={dayDetailDate}
+        shifts={dayDetailDate ? getScheduledEmployeesForDay(dayDetailDate) : []}
+        timeOffs={dayDetailDate ? getTimeOffForDay(dayDetailDate) : []}
+        employees={employees}
+        getTimeOffLabel={getTimeOffLabel}
+        onShiftClick={(shift, employee) => {
+          setDayDetailDialogOpen(false);
+          if (dayDetailDate) {
+            handleShiftClick(shift as Shift, employee as Employee, dayDetailDate);
+          }
+        }}
+      />
 
       {/* Employee Day Detail Dialog */}
       <EmployeeDayDetailDialog
