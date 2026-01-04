@@ -293,9 +293,10 @@ export default function ShiftsPage() {
       };
     });
     
-    // Combine custom shifts (excluding absent) with schedule-based shifts
+    // Combine custom shifts (excluding absent and cancelled) with schedule-based shifts
+    // Note: cancelled shifts still block the schedule (via customShiftEmployeeIds) but aren't displayed
     const validCustomShifts = customShifts
-      .filter(s => !absentEmployeeIds.has(s.employee_id))
+      .filter(s => !absentEmployeeIds.has(s.employee_id) && s.status !== 'cancelled')
       .map(s => ({ ...s, isFromSchedule: false }));
     
     return [...validCustomShifts, ...scheduleShifts];
@@ -526,8 +527,22 @@ export default function ShiftsPage() {
       
       if (insertError) throw insertError;
       
-      // Delete the source shift if it's not from recurring schedule
-      if (!shift.isFromSchedule && shift.id) {
+      // Handle the source shift
+      if (shift.isFromSchedule) {
+        // For recurring schedule shifts, create a cancelled shift to hide the original
+        const sourceDateStr = format(sourceDate, 'yyyy-MM-dd');
+        const { error: cancelError } = await supabase.from('shifts').insert({
+          employee_id: employee.id,
+          date: sourceDateStr,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          location: shift.location,
+          status: 'cancelled',
+        });
+        
+        if (cancelError) throw cancelError;
+      } else if (shift.id) {
+        // For custom shifts, delete the original
         const { error: deleteError } = await supabase
           .from('shifts')
           .delete()
