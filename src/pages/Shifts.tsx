@@ -571,6 +571,7 @@ export default function ShiftsPage() {
     }
     
     const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+    const targetDayOfWeek = targetDate.getDay();
     
     try {
       // Check if employee is on time off on target date
@@ -580,6 +581,31 @@ export default function ShiftsPage() {
       
       if (isOnTimeOff) {
         toast.error('Impossible de déplacer : employé en congé ce jour');
+        setDragData(null);
+        return;
+      }
+      
+      // Check if employee already has a custom shift on target date (excluding cancelled ones)
+      const hasExistingShift = shifts.some(
+        s => s.employee_id === employee.id && s.date === targetDateStr && s.status !== 'cancelled'
+      );
+      
+      if (hasExistingShift) {
+        toast.error('Impossible de déplacer : employé déjà planifié ce jour');
+        setDragData(null);
+        return;
+      }
+      
+      // Check if employee is scheduled to work on target date based on their weekly schedule
+      const hasRecurringSchedule = employeeSchedules.some(
+        schedule => 
+          schedule.employee_id === employee.id && 
+          schedule.day_of_week === targetDayOfWeek && 
+          schedule.is_working_day
+      );
+      
+      if (hasRecurringSchedule) {
+        toast.error('Impossible de déplacer : employé travaille déjà ce jour selon son planning');
         setDragData(null);
         return;
       }
