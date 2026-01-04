@@ -8,8 +8,9 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Pencil, Trash2 } from 'lucide-react';
 
 interface TimeOffRequest {
   id: string;
@@ -18,6 +19,7 @@ interface TimeOffRequest {
   end_date: string;
   status: string;
   type: string;
+  reason?: string | null;
 }
 
 interface Employee {
@@ -32,7 +34,8 @@ interface TimeOffListDialogProps {
   onOpenChange: (open: boolean) => void;
   timeOffRequests: TimeOffRequest[];
   employees: Employee[];
-  onTimeOffClick?: (request: TimeOffRequest) => void;
+  onEditTimeOff?: (request: TimeOffRequest) => void;
+  onDeleteTimeOff?: (request: TimeOffRequest) => void;
 }
 
 const getTypeLabel = (type: string) => {
@@ -74,10 +77,18 @@ export function TimeOffListDialog({
   onOpenChange,
   timeOffRequests,
   employees,
-  onTimeOffClick,
+  onEditTimeOff,
+  onDeleteTimeOff,
 }: TimeOffListDialogProps) {
   const getEmployee = (employeeId: string) => {
     return employees.find((e) => e.id === employeeId);
+  };
+
+  const handleDelete = (e: React.MouseEvent, request: TimeOffRequest) => {
+    e.stopPropagation();
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce congé ?')) {
+      onDeleteTimeOff?.(request);
+    }
   };
 
   return (
@@ -98,8 +109,7 @@ export function TimeOffListDialog({
                 return (
                   <div
                     key={request.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => onTimeOffClick?.(request)}
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={employee?.avatar_url || undefined} />
@@ -122,6 +132,24 @@ export function TimeOffListDialog({
                     <Badge variant="outline" className={getTypeBadgeVariant(request.type)}>
                       {getTypeLabel(request.type)}
                     </Badge>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onEditTimeOff?.(request)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={(e) => handleDelete(e, request)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })
