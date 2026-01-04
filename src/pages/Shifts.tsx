@@ -29,6 +29,7 @@ import { EmployeeDayDetailDialog } from '@/components/calendar/EmployeeDayDetail
 import { EmployeesListDialog } from '@/components/shifts/EmployeesListDialog';
 import { CustomShiftsListDialog } from '@/components/shifts/CustomShiftsListDialog';
 import { TimeOffListDialog } from '@/components/shifts/TimeOffListDialog';
+import { TimeOffEditDialog } from '@/components/time-off/TimeOffEditDialog';
 import {
   format,
   startOfMonth,
@@ -103,6 +104,11 @@ interface TimeOffRequest {
   end_date: string;
   status: string;
   type: string;
+  reason?: string | null;
+  employee?: {
+    first_name: string;
+    last_name: string;
+  };
 }
 
 interface Location {
@@ -142,6 +148,7 @@ export default function ShiftsPage() {
     location: string;
     shiftId?: string;
     isFromSchedule: boolean;
+    cancelledShiftId?: string;
   } | null>(null);
 
   // Drag and drop state
@@ -159,6 +166,10 @@ export default function ShiftsPage() {
   const [employeesListOpen, setEmployeesListOpen] = useState(false);
   const [customShiftsListOpen, setCustomShiftsListOpen] = useState(false);
   const [timeOffListOpen, setTimeOffListOpen] = useState(false);
+  
+  // Time off edit dialog state
+  const [timeOffEditOpen, setTimeOffEditOpen] = useState(false);
+  const [editingTimeOff, setEditingTimeOff] = useState<TimeOffRequest | null>(null);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -371,6 +382,13 @@ export default function ShiftsPage() {
 
   // Handle click on a shift/presence avatar
   const handleShiftClick = (shift: Shift, employee: Employee, date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    // Check if there's a cancelled shift for this employee on this date
+    const cancelledShift = shifts.find(
+      s => s.employee_id === employee.id && s.date === dateStr && s.status === 'cancelled'
+    );
+    
     setSelectedEmployee(employee);
     setSelectedDayDate(date);
     setSelectedShiftData({
@@ -379,6 +397,7 @@ export default function ShiftsPage() {
       location: shift.location || '',
       shiftId: shift.isFromSchedule ? undefined : shift.id,
       isFromSchedule: shift.isFromSchedule || false,
+      cancelledShiftId: cancelledShift?.id,
     });
     setDetailDialogOpen(true);
   };
@@ -484,6 +503,33 @@ export default function ShiftsPage() {
       console.error('Error deleting shift:', error);
       toast.error('Erreur lors de la suppression');
       throw error;
+    }
+  };
+
+  // Restore a cancelled shift (delete the cancelled record to show original schedule)
+  const handleRestoreShift = async (cancelledShiftId: string) => {
+    try {
+      const { error } = await supabase.from('shifts').delete().eq('id', cancelledShiftId);
+      if (error) throw error;
+      toast.success('Planning restauré');
+      fetchData();
+    } catch (error) {
+      console.error('Error restoring shift:', error);
+      toast.error('Erreur lors de la restauration');
+      throw error;
+    }
+  };
+
+  // Delete a time off request
+  const handleDeleteTimeOff = async (request: TimeOffRequest) => {
+    try {
+      const { error } = await supabase.from('time_off_requests').delete().eq('id', request.id);
+      if (error) throw error;
+      toast.success('Congé supprimé');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting time off:', error);
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -908,9 +954,11 @@ export default function ShiftsPage() {
         location={selectedShiftData?.location}
         shiftId={selectedShiftData?.shiftId}
         isFromSchedule={selectedShiftData?.isFromSchedule || false}
+        cancelledShiftId={selectedShiftData?.cancelledShiftId}
         onSaveHours={handleSaveHours}
         onCreateTimeOff={handleCreateTimeOff}
         onDeleteShift={selectedShiftData?.shiftId ? handleDeleteCustomShift : undefined}
+        onRestoreShift={selectedShiftData?.cancelledShiftId ? handleRestoreShift : undefined}
         locations={locations}
       />
 
@@ -1045,6 +1093,25 @@ export default function ShiftsPage() {
         onOpenChange={setTimeOffListOpen}
         timeOffRequests={timeOffRequests}
         employees={employees}
+        onEditTimeOff={(request) => {
+          setTimeOffListOpen(false);
+          setEditingTimeOff({
+            ...request,
+            employee: employees.find(e => e.id === request.employee_id) as any,
+          });
+          setTimeOffEditOpen(true);
+        }}
+        onDeleteTimeOff={handleDeleteTimeOff}
+      />
+
+      <TimeOffEditDialog
+        open={timeOffEditOpen}
+        onClose={() => {
+          setTimeOffEditOpen(false);
+          setEditingTimeOff(null);
+        }}
+        request={editingTimeOff as any}
+        onUpdate={fetchData}
       />
     </MainLayout>
   );

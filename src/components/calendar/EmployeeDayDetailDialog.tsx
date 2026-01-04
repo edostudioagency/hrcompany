@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, MapPin, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Trash2, Undo2 } from "lucide-react";
 
 interface Employee {
   id: string;
@@ -41,9 +41,11 @@ interface EmployeeDayDetailDialogProps {
   location?: string;
   shiftId?: string;
   isFromSchedule: boolean;
+  cancelledShiftId?: string; // ID of cancelled shift if this day was moved
   onSaveHours: (employeeId: string, date: Date, startTime: string, endTime: string, location: string) => Promise<void>;
   onCreateTimeOff: (employeeId: string, date: Date, type: string) => Promise<void>;
   onDeleteShift?: (shiftId: string) => Promise<void>;
+  onRestoreShift?: (cancelledShiftId: string) => Promise<void>;
   locations: { id: string; name: string }[];
 }
 
@@ -65,9 +67,11 @@ export function EmployeeDayDetailDialog({
   location: initialLocation = "",
   shiftId,
   isFromSchedule,
+  cancelledShiftId,
   onSaveHours,
   onCreateTimeOff,
   onDeleteShift,
+  onRestoreShift,
   locations,
 }: EmployeeDayDetailDialogProps) {
   const [startTime, setStartTime] = useState(initialStartTime);
@@ -112,6 +116,17 @@ export function EmployeeDayDetailDialog({
     setIsSaving(true);
     try {
       await onDeleteShift(shiftId);
+      onOpenChange(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRestoreShift = async () => {
+    if (!cancelledShiftId || !onRestoreShift) return;
+    setIsSaving(true);
+    try {
+      await onRestoreShift(cancelledShiftId);
       onOpenChange(false);
     } finally {
       setIsSaving(false);
@@ -225,18 +240,31 @@ export function EmployeeDayDetailDialog({
         </div>
 
         <DialogFooter className="flex-row justify-between sm:justify-between">
-          {shiftId && onDeleteShift && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDeleteShift}
-              disabled={isSaving}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Supprimer
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {shiftId && onDeleteShift && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteShift}
+                disabled={isSaving}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Supprimer
+              </Button>
+            )}
+            {cancelledShiftId && onRestoreShift && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRestoreShift}
+                disabled={isSaving}
+              >
+                <Undo2 className="h-4 w-4 mr-1" />
+                Restaurer planning
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Annuler
