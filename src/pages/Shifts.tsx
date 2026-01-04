@@ -515,7 +515,7 @@ export default function ShiftsPage() {
       }
       
       // Create a shift on the target date with the same hours
-      const { error } = await supabase.from('shifts').insert({
+      const { error: insertError } = await supabase.from('shifts').insert({
         employee_id: employee.id,
         date: targetDateStr,
         start_time: shift.start_time,
@@ -524,7 +524,17 @@ export default function ShiftsPage() {
         status: 'planned',
       });
       
-      if (error) throw error;
+      if (insertError) throw insertError;
+      
+      // Delete the source shift if it's not from recurring schedule
+      if (!shift.isFromSchedule && shift.id) {
+        const { error: deleteError } = await supabase
+          .from('shifts')
+          .delete()
+          .eq('id', shift.id);
+        
+        if (deleteError) throw deleteError;
+      }
       
       toast.success(`${employee.first_name} déplacé au ${format(targetDate, 'd MMMM', { locale: fr })}`);
       fetchData();
