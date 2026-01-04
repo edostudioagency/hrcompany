@@ -868,14 +868,14 @@ export default function ShiftsPage() {
             <div className="space-y-2">
               <Label>Lieu (optionnel)</Label>
               <Select
-                value={formData.location}
-                onValueChange={(value) => setFormData({ ...formData, location: value })}
+                value={formData.location || "__none__"}
+                onValueChange={(value) => setFormData({ ...formData, location: value === "__none__" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un lieu" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun lieu</SelectItem>
+                  <SelectItem value="__none__">Aucun lieu</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.name}>
                       {loc.name}

@@ -187,12 +187,12 @@ export function EmployeeDayDetailDialog({
               <MapPin className="h-4 w-4" />
               Lieu (optionnel)
             </Label>
-            <Select value={location} onValueChange={setLocation}>
+            <Select value={location || "__none__"} onValueChange={(value) => setLocation(value === "__none__" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un lieu" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun lieu</SelectItem>
+                <SelectItem value="__none__">Aucun lieu</SelectItem>
                 {locations.map((loc) => (
                   <SelectItem key={loc.id} value={loc.name}>
                     {loc.name}
