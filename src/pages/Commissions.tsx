@@ -4,17 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -31,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Send, Euro, TrendingUp, Users } from 'lucide-react';
+import { Loader2, Plus, Euro, TrendingUp, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -61,13 +50,6 @@ interface Employee {
   email: string;
   status: string;
   salary_type: string | null;
-}
-
-interface AccountantSettings {
-  id: string;
-  email: string | null;
-  send_commissions_monthly: boolean;
-  notify_on_new_commission: boolean;
 }
 
 const MONTHS = [
@@ -102,18 +84,10 @@ export default function CommissionsPage() {
   const { currentCompany } = useCompany();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [settings, setSettings] = useState<AccountantSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  const [settingsForm, setSettingsForm] = useState({
-    email: '',
-    send_commissions_monthly: true,
-    notify_on_new_commission: false,
-  });
 
   const fetchData = async () => {
     if (!currentCompany?.id) {
@@ -142,28 +116,15 @@ export default function CommissionsPage() {
         return;
       }
 
-      const [commissionsRes, settingsRes] = await Promise.all([
-        supabase
-          .from('commissions')
-          .select('*, employee:employees(id, first_name, last_name, email)')
-          .in('employee_id', employeeIds)
-          .order('year', { ascending: false })
-          .order('month', { ascending: false }),
-        supabase.from('accountant_settings').select('*').limit(1).maybeSingle(),
-      ]);
+      const { data: commissionsData, error: commissionsError } = await supabase
+        .from('commissions')
+        .select('*, employee:employees(id, first_name, last_name, email)')
+        .in('employee_id', employeeIds)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
 
-      if (commissionsRes.error) throw commissionsRes.error;
-
-      setCommissions(commissionsRes.data || []);
-
-      if (settingsRes.data) {
-        setSettings(settingsRes.data);
-        setSettingsForm({
-          email: settingsRes.data.email || '',
-          send_commissions_monthly: settingsRes.data.send_commissions_monthly,
-          notify_on_new_commission: settingsRes.data.notify_on_new_commission,
-        });
-      }
+      if (commissionsError) throw commissionsError;
+      setCommissions(commissionsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erreur lors du chargement des données');
@@ -180,79 +141,6 @@ export default function CommissionsPage() {
   const handleDialogSuccess = () => {
     fetchData();
   };
-
-  const handleSaveSettings = async () => {
-    try {
-      if (settings?.id) {
-        const { error } = await supabase
-          .from('accountant_settings')
-          .update(settingsForm)
-          .eq('id', settings.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('accountant_settings').insert(settingsForm);
-        if (error) throw error;
-      }
-
-      toast.success('Paramètres enregistrés');
-      setSettingsDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error("Erreur lors de l'enregistrement");
-    }
-  };
-
-  const handleSendToAccountant = async () => {
-    if (!settings?.email) {
-      toast.error("Veuillez configurer l'email du comptable");
-      setSettingsDialogOpen(true);
-      return;
-    }
-
-    const monthCommissions = filteredCommissions.filter((c) => c.status !== 'sent');
-    if (monthCommissions.length === 0) {
-      toast.info('Aucune commission à envoyer');
-      return;
-    }
-
-    try {
-      // Build email content
-      const commissionsList = monthCommissions
-        .map((c) => `${c.employee?.first_name} ${c.employee?.last_name}: ${c.amount}€`)
-        .join('\n');
-
-      const totalAmount = monthCommissions.reduce((sum, c) => sum + Number(c.amount), 0);
-
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          type: 'commissions',
-          recipientEmail: settings.email,
-          recipientName: 'Comptable',
-          data: {
-            month: MONTHS.find((m) => m.value === selectedMonth)?.label,
-            year: selectedYear,
-            commissions: commissionsList,
-            total: totalAmount,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      // Update commission statuses
-      const ids = monthCommissions.map((c) => c.id);
-      await supabase.from('commissions').update({ status: 'sent' }).in('id', ids);
-
-      toast.success('Commissions envoyées au comptable');
-      fetchData();
-    } catch (error) {
-      console.error('Error sending commissions:', error);
-      toast.error("Erreur lors de l'envoi");
-    }
-  };
-
-
 
   const filteredCommissions = commissions.filter(
     (c) => c.month === selectedMonth && c.year === selectedYear
@@ -370,19 +258,10 @@ export default function CommissionsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setSettingsDialogOpen(true)}>
-              Paramètres comptable
-            </Button>
-            <Button variant="outline" onClick={handleSendToAccountant}>
-              <Send className="h-4 w-4 mr-2" />
-              Envoyer au comptable
-            </Button>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter une commission
-            </Button>
-          </div>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter une commission
+          </Button>
         </div>
 
         {/* Commissions Table */}
@@ -460,35 +339,6 @@ export default function CommissionsPage() {
         employees={employees}
         onSuccess={handleDialogSuccess}
       />
-
-      {/* Settings Dialog */}
-      <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Paramètres comptable</DialogTitle>
-            <DialogDescription>
-              Configurez les options d'envoi des commissions
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Email du comptable</Label>
-              <Input
-                type="email"
-                value={settingsForm.email}
-                onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
-                placeholder="comptable@exemple.com"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSettingsDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveSettings}>Enregistrer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 }

@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { Loader2, Save, Calculator, Mail } from 'lucide-react';
+import { CommissionsSendSection } from './CommissionsSendSection';
 
 interface CompanySettings {
   id: string;
@@ -144,83 +145,87 @@ export function AccountingSettings() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Email du comptable</CardTitle>
-          </div>
-          <CardDescription>
-            Adresse email pour l'envoi automatique des informations
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="accountant-email">Adresse email</Label>
-            <Input
-              id="accountant-email"
-              type="email"
-              value={formData.accountant_email}
-              onChange={(e) => setFormData({ ...formData, accountant_email: e.target.value })}
-              placeholder="comptable@cabinet.fr"
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Email du comptable</CardTitle>
+            </div>
+            <CardDescription>
+              Adresse email pour l'envoi automatique des informations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="accountant-email">Adresse email</Label>
+              <Input
+                id="accountant-email"
+                type="email"
+                value={formData.accountant_email}
+                onChange={(e) => setFormData({ ...formData, accountant_email: e.target.value })}
+                placeholder="comptable@cabinet.fr"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calculator className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Jours d'envoi automatique</CardTitle>
-          </div>
-          <CardDescription>
-            Sélectionnez les jours du mois où les informations seront envoyées au comptable
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-16 gap-2">
-            {DAYS_OF_MONTH.map((day) => (
-              <label
-                key={day}
-                className={`
-                  flex items-center justify-center w-10 h-10 rounded-lg border cursor-pointer transition-colors
-                  ${
-                    formData.accountant_notification_days.includes(day)
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background hover:bg-muted border-input'
-                  }
-                `}
-              >
-                <Checkbox
-                  checked={formData.accountant_notification_days.includes(day)}
-                  onCheckedChange={() => toggleDay(day)}
-                  className="sr-only"
-                />
-                <span className="text-sm font-medium">{day}</span>
-              </label>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            Jours sélectionnés :{' '}
-            {formData.accountant_notification_days.length > 0
-              ? formData.accountant_notification_days.join(', ')
-              : 'Aucun'}
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Jours d'envoi automatique</CardTitle>
+            </div>
+            <CardDescription>
+              Sélectionnez les jours du mois où les informations seront envoyées au comptable
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-16 gap-2">
+              {DAYS_OF_MONTH.map((day) => (
+                <label
+                  key={day}
+                  className={`
+                    flex items-center justify-center w-10 h-10 rounded-lg border cursor-pointer transition-colors
+                    ${
+                      formData.accountant_notification_days.includes(day)
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background hover:bg-muted border-input'
+                    }
+                  `}
+                >
+                  <Checkbox
+                    checked={formData.accountant_notification_days.includes(day)}
+                    onCheckedChange={() => toggleDay(day)}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">{day}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              Jours sélectionnés :{' '}
+              {formData.accountant_notification_days.length > 0
+                ? formData.accountant_notification_days.join(', ')
+                : 'Aucun'}
+            </p>
+          </CardContent>
+        </Card>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={saving}>
-          {saving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Enregistrer
-        </Button>
-      </div>
-    </form>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={saving}>
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Enregistrer
+          </Button>
+        </div>
+      </form>
+
+      <CommissionsSendSection accountantEmail={formData.accountant_email || null} />
+    </div>
   );
 }
