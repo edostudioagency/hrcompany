@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, sortEmployees } from '@/lib/utils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DayAvatars } from '@/components/calendar/DayAvatars';
 import { DayDetailDialog } from '@/components/calendar/DayDetailDialog';
@@ -125,7 +125,7 @@ interface DragData {
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 export default function ShiftsPage() {
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -1010,8 +1010,7 @@ export default function ShiftsPage() {
                   <SelectValue placeholder="Sélectionner un employé" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...employees]
-                    .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+                  {sortEmployees(employees, companySettings?.employee_sort_order || 'first_name')
                     .map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
                         {emp.first_name} {emp.last_name}

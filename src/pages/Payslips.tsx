@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/contexts/CompanyContext';
+import { sortEmployees } from '@/lib/utils';
 
 interface Payslip {
   id: string;
@@ -87,7 +88,7 @@ const MONTHS = [
 
 export default function PayslipsPage() {
   const { role } = useAuth();
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -543,8 +544,7 @@ export default function PayslipsPage() {
                   <SelectValue placeholder="Sélectionner un employé" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...employees]
-                    .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+                  {sortEmployees(employees, companySettings?.employee_sort_order || 'first_name')
                     .map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
                         {emp.first_name} {emp.last_name}

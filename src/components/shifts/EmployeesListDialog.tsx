@@ -7,6 +7,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
 
 interface Employee {
   id: string;
@@ -21,6 +22,7 @@ interface EmployeesListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employees: Employee[];
+  sortOrder?: EmployeeSortOrder;
   onEmployeeClick?: (employee: Employee) => void;
 }
 
@@ -28,14 +30,11 @@ export function EmployeesListDialog({
   open,
   onOpenChange,
   employees,
+  sortOrder = 'first_name',
   onEmployeeClick,
 }: EmployeesListDialogProps) {
-  // Sort employees alphabetically
-  const sortedEmployees = [...employees].sort((a, b) => {
-    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-    return nameA.localeCompare(nameB, 'fr');
-  });
+  // Sort employees using the utility function
+  const sortedEmployees = sortEmployees(employees, sortOrder);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

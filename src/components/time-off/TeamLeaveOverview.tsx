@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Users, Calendar, Briefcase, HeartPulse, Clock, Eye } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, sortEmployees } from '@/lib/utils';
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-calculator';
 import { EmployeeLeaveHistory } from './EmployeeLeaveHistory';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface Employee {
   id: string;
@@ -130,12 +131,14 @@ function EmployeeCard({
 
 export function TeamLeaveOverview() {
   const { role, user } = useAuth();
+  const { companySettings } = useCompany();
   const [employees, setEmployees] = useState<EmployeeWithBalances[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithBalances | null>(null);
 
   const isAdmin = role === 'admin';
   const currentYear = new Date().getFullYear();
+  const sortOrder = companySettings?.employee_sort_order || 'first_name';
 
   useEffect(() => {
     fetchTeamData();
@@ -261,7 +264,7 @@ export function TeamLeaveOverview() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {employees.map((employee) => (
+            {sortEmployees(employees, sortOrder).map((employee) => (
               <EmployeeCard 
                 key={employee.id} 
                 employee={employee}
