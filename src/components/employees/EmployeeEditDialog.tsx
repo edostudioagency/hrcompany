@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, User, Briefcase, Clock, Mail, KeyRound, Shield } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-input';
 import { RoleManagerSection } from './RoleManagerSection';
+import { CommissionConfigSection } from './CommissionConfigSection';
 
 interface EmployeeInvitation {
   invitation_token: string;
@@ -578,6 +579,12 @@ export function EmployeeEditDialog({
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Commission Configuration Section */}
+            <CommissionConfigSection 
+              employeeId={employee.id} 
+              salaryType={salaryType}
+            />
           </TabsContent>
 
           {/* Schedule Tab */}
