@@ -35,6 +35,7 @@ import { Loader2, Plus, Send, Euro, TrendingUp, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCompany } from '@/contexts/CompanyContext';
+import { AddCommissionDialog } from '@/components/commissions/AddCommissionDialog';
 
 interface Commission {
   id: string;
@@ -59,6 +60,7 @@ interface Employee {
   last_name: string;
   email: string;
   status: string;
+  salary_type: string | null;
 }
 
 interface AccountantSettings {
@@ -107,14 +109,6 @@ export default function CommissionsPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const [formData, setFormData] = useState({
-    employee_id: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    amount: '',
-    description: '',
-  });
-
   const [settingsForm, setSettingsForm] = useState({
     email: '',
     send_commissions_monthly: true,
@@ -133,7 +127,7 @@ export default function CommissionsPage() {
       // Fetch employees for this company
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, email, status')
+        .select('id, first_name, last_name, email, status, salary_type')
         .eq('company_id', currentCompany.id)
         .eq('status', 'active');
 
@@ -183,37 +177,8 @@ export default function CommissionsPage() {
     fetchData();
   }, [currentCompany?.id]);
 
-  const handleSubmit = async () => {
-    if (!formData.employee_id || !formData.amount) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('commissions').upsert(
-        {
-          employee_id: formData.employee_id,
-          month: formData.month,
-          year: formData.year,
-          amount: parseFloat(formData.amount),
-          description: formData.description || null,
-          status: 'pending',
-        },
-        {
-          onConflict: 'employee_id,month,year',
-        }
-      );
-
-      if (error) throw error;
-
-      toast.success('Commission enregistrée');
-      setDialogOpen(false);
-      resetForm();
-      fetchData();
-    } catch (error) {
-      console.error('Error saving commission:', error);
-      toast.error("Erreur lors de l'enregistrement");
-    }
+  const handleDialogSuccess = () => {
+    fetchData();
   };
 
   const handleSaveSettings = async () => {
@@ -287,15 +252,7 @@ export default function CommissionsPage() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      employee_id: '',
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      amount: '',
-      description: '',
-    });
-  };
+
 
   const filteredCommissions = commissions.filter(
     (c) => c.month === selectedMonth && c.year === selectedYear
@@ -497,98 +454,12 @@ export default function CommissionsPage() {
       </div>
 
       {/* Add Commission Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ajouter une commission</DialogTitle>
-            <DialogDescription>
-              Enregistrez une commission pour un employé
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Employé *</Label>
-              <Select
-                value={formData.employee_id}
-                onValueChange={(value) => setFormData({ ...formData, employee_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un employé" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Mois</Label>
-                <Select
-                  value={formData.month.toString()}
-                  onValueChange={(v) => setFormData({ ...formData, month: parseInt(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m) => (
-                      <SelectItem key={m.value} value={m.value.toString()}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Année</Label>
-                <Select
-                  value={formData.year.toString()}
-                  onValueChange={(v) => setFormData({ ...formData, year: parseInt(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y} value={y.toString()}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Montant (€) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description (optionnel)</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Détails de la commission..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSubmit}>Enregistrer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddCommissionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        employees={employees}
+        onSuccess={handleDialogSuccess}
+      />
 
       {/* Settings Dialog */}
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>

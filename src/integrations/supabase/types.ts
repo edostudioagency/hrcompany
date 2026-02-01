@@ -44,6 +44,8 @@ export type Database = {
       commissions: {
         Row: {
           amount: number
+          base_amount: number | null
+          commission_rate_used: number | null
           created_at: string
           description: string | null
           employee_id: string
@@ -55,6 +57,8 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          base_amount?: number | null
+          commission_rate_used?: number | null
           created_at?: string
           description?: string | null
           employee_id: string
@@ -66,6 +70,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          base_amount?: number | null
+          commission_rate_used?: number | null
           created_at?: string
           description?: string | null
           employee_id?: string
@@ -259,6 +265,47 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      employee_commission_configs: {
+        Row: {
+          commission_rate: number
+          commission_type: string
+          created_at: string
+          description: string | null
+          employee_id: string
+          fixed_amount_per_unit: number | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          description?: string | null
+          employee_id: string
+          fixed_amount_per_unit?: number | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          description?: string | null
+          employee_id?: string
+          fixed_amount_per_unit?: number | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_commission_configs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_documents: {
         Row: {
