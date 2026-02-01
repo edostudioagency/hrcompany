@@ -324,11 +324,13 @@ const Swaps = () => {
                         <SelectValue placeholder="Sélectionner un collègue" />
                       </SelectTrigger>
                       <SelectContent>
-                        {otherEmployees.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.first_name} {emp.last_name}
-                          </SelectItem>
-                        ))}
+                        {[...otherEmployees]
+                          .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+                          .map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.first_name} {emp.last_name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -193,9 +193,9 @@ export function TeamLeaveOverview() {
         balances: (balancesData || []).filter(b => b.employee_id === emp.id),
       }));
 
-      // Sort by name
+      // Sort by name with French locale
       employeesWithBalances.sort((a, b) => 
-        `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+        `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr')
       );
 
       setEmployees(employeesWithBalances);
