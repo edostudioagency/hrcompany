@@ -1,72 +1,62 @@
 
-# Plan: Tri alphabetique configurable des employes
+# Plan: Tri par statut puis alphabetique
 
 ## Resume
 
-Corriger le tri qui ne fonctionne pas sur la page Employes et ajouter une option dans les parametres pour choisir l'ordre de tri (par prenom ou par nom).
+Modifier la fonction de tri des employes pour afficher d'abord les employes actifs, puis ceux en attente, tout en conservant le tri alphabetique au sein de chaque groupe de statut.
 
 ---
 
-## 1. Migration base de donnees
-
-Ajouter une colonne `employee_sort_order` dans la table `company_settings` :
+## Ordre de tri souhaite
 
 ```text
-+------------------------+--------+-----------------------------------+
-| Colonne                | Type   | Description                       |
-+------------------------+--------+-----------------------------------+
-| employee_sort_order    | text   | 'first_name' ou 'last_name'       |
-|                        |        | Defaut: 'first_name'              |
-+------------------------+--------+-----------------------------------+
+1. Employes ACTIFS (status = 'active' avec user_id)
+   → Tries alphabetiquement selon le parametre (prenom ou nom)
+
+2. Employes EN ATTENTE (status = 'pending' ou 'active' sans user_id)
+   → Tries alphabetiquement selon le parametre (prenom ou nom)
+
+3. Employes INACTIFS (status = 'inactive')
+   → Tries alphabetiquement selon le parametre (prenom ou nom)
 ```
 
 ---
 
-## 2. Mise a jour du CompanyContext
+## Modification de la fonction utilitaire
 
-Ajouter le parametre `employee_sort_order` dans l'interface `CompanySettings` et le recuperer lors du fetch :
+Fichier: `src/lib/utils.ts`
+
+La fonction `sortEmployees` sera mise a jour pour accepter un parametre optionnel de statut et appliquer le tri en deux etapes :
 
 ```typescript
-interface CompanySettings {
-  allow_shift_swaps: boolean;
-  employee_sort_order: 'first_name' | 'last_name';
-}
-```
-
-Cela permettra d'acceder au parametre partout dans l'application via `useCompany()`.
-
----
-
-## 3. Interface des parametres (RulesSettings.tsx)
-
-Ajouter une nouvelle section "Affichage" avec un selecteur pour l'ordre de tri :
-
-```text
-+--------------------------------------------------+
-| Affichage des employes                           |
-+--------------------------------------------------+
-| Trier les listes d'employes par :                |
-|                                                  |
-| (o) Prenom                                       |
-|     Ex: Alice Martin, Benoit Dupont              |
-|                                                  |
-| ( ) Nom                                          |
-|     Ex: Benoit Dupont, Alice Martin              |
-+--------------------------------------------------+
-```
-
----
-
-## 4. Fonction utilitaire de tri
-
-Creer une fonction utilitaire reutilisable dans `src/lib/utils.ts` :
-
-```typescript
-export function sortEmployees<T extends { first_name: string; last_name: string }>(
+export function sortEmployees<T extends { 
+  first_name: string; 
+  last_name: string;
+  status?: string;
+  user_id?: string | null;
+}>(
   employees: T[],
-  sortBy: 'first_name' | 'last_name' = 'first_name'
+  sortBy: EmployeeSortOrder = 'first_name'
 ): T[] {
   return [...employees].sort((a, b) => {
+    // 1. D'abord trier par statut (actif > en attente > inactif)
+    const getStatusPriority = (emp: T) => {
+      const isActive = emp.status === 'active' && emp.user_id;
+      const isPending = emp.status === 'pending' || 
+                       (emp.status === 'active' && !emp.user_id);
+      if (isActive) return 0;
+      if (isPending) return 1;
+      return 2; // inactive
+    };
+    
+    const priorityA = getStatusPriority(a);
+    const priorityB = getStatusPriority(b);
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // 2. Ensuite trier alphabetiquement
     const valueA = sortBy === 'first_name' 
       ? `${a.first_name} ${a.last_name}` 
       : `${a.last_name} ${a.first_name}`;
@@ -80,58 +70,48 @@ export function sortEmployees<T extends { first_name: string; last_name: string 
 
 ---
 
-## 5. Application du tri dans les composants
+## Fichiers a modifier
 
-Appliquer le tri en utilisant le parametre du contexte dans tous les fichiers concernes :
-
-| Fichier | Localisation |
+| Fichier | Modification |
 |---------|--------------|
-| `src/pages/Employees.tsx` | Tableau principal des employes |
-| `src/pages/TimeOff.tsx` | Menu deroulant selection employe |
-| `src/pages/Shifts.tsx` | Menu deroulant assignation shift |
-| `src/pages/Swaps.tsx` | Menu deroulant echange collegue |
-| `src/pages/Payslips.tsx` | Menu deroulant import fiche paie |
-| `src/components/commissions/AddCommissionDialog.tsx` | Selection employe commission |
-| `src/components/time-off/TeamLeaveOverview.tsx` | Grille des cartes employes |
-| `src/components/shifts/EmployeesListDialog.tsx` | Liste employes actifs |
-| `src/components/employees/EmployeeTable.tsx` | Si utilise separement |
+| `src/lib/utils.ts` | Ajouter le tri par statut dans `sortEmployees` |
 
-Exemple d'utilisation :
-
-```typescript
-import { useCompany } from '@/contexts/CompanyContext';
-import { sortEmployees } from '@/lib/utils';
-
-// Dans le composant
-const { companySettings } = useCompany();
-const sortedEmployees = sortEmployees(
-  filteredEmployees, 
-  companySettings?.employee_sort_order || 'first_name'
-);
-```
+Les autres fichiers utilisant deja `sortEmployees` beneficieront automatiquement de ce changement, a condition que les objets employes passent les champs `status` et `user_id`.
 
 ---
 
-## Fichiers a modifier
+## Fichiers a verifier/adapter
 
-1. **Migration SQL** - Ajouter `employee_sort_order` a `company_settings`
-2. **src/contexts/CompanyContext.tsx** - Ajouter le parametre au contexte
-3. **src/lib/utils.ts** - Ajouter la fonction `sortEmployees`
-4. **src/components/settings/RulesSettings.tsx** - Ajouter le selecteur de tri
-5. **src/pages/Employees.tsx** - Appliquer le tri sur `filteredEmployees`
-6. **src/pages/TimeOff.tsx** - Utiliser `sortEmployees` 
-7. **src/pages/Shifts.tsx** - Utiliser `sortEmployees`
-8. **src/pages/Swaps.tsx** - Utiliser `sortEmployees`
-9. **src/pages/Payslips.tsx** - Utiliser `sortEmployees`
-10. **src/components/commissions/AddCommissionDialog.tsx** - Utiliser `sortEmployees`
-11. **src/components/time-off/TeamLeaveOverview.tsx** - Utiliser `sortEmployees`
-12. **src/components/shifts/EmployeesListDialog.tsx** - Utiliser `sortEmployees`
+Certains fichiers passent des objets employes avec des noms de champs differents. Il faudra s'assurer que `status` et `user_id` sont bien transmis :
+
+| Fichier | Verification |
+|---------|--------------|
+| `src/pages/Employees.tsx` | Les employes ont deja `status` et `user_id` |
+| `src/pages/TimeOff.tsx` | Verifier si `status` est present |
+| `src/pages/Shifts.tsx` | Verifier si `status` est present |
+| `src/pages/Swaps.tsx` | Verifier si `status` est present |
+| `src/pages/Payslips.tsx` | Verifier si `status` est present |
+| `src/components/commissions/AddCommissionDialog.tsx` | Verifier si `status` est present |
+| `src/components/time-off/TeamLeaveOverview.tsx` | Les employes ont `status`, verifier `user_id` |
+| `src/components/shifts/EmployeesListDialog.tsx` | Verifier les champs |
+| `src/components/employees/EmployeeTable.tsx` | Adapter le mapping des champs |
 
 ---
 
 ## Resultat attendu
 
-- Toutes les listes d'employes seront triees selon le parametre choisi
-- L'administrateur peut changer l'ordre de tri dans Parametres > Regles
-- Le tri fonctionne correctement avec les accents francais (locale 'fr')
-- Le parametre est centralise et accessible partout via le contexte
+Avant :
+```text
+Alice Dupont (En attente)
+Benoit Martin (Actif)
+Claire Bernard (Actif)
+```
+
+Apres :
+```text
+Benoit Martin (Actif)
+Claire Bernard (Actif)
+Alice Dupont (En attente)
+```
+
+Les employes actifs apparaissent en premier, tries alphabetiquement, suivis des employes en attente, egalement tries alphabetiquement.
