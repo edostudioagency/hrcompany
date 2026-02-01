@@ -1,114 +1,82 @@
 
-# Plan: Mode d'envoi des commissions (Manuel ou Automatique)
+# Plan: Tri alphabetique de toutes les listes d'employes
 
 ## Resume
 
-Ajouter une option dans les parametres comptables permettant de choisir le mode d'envoi des commissions au comptable : soit manuellement via un bouton, soit automatiquement en meme temps que les autres informations RH (conges, arrets maladie, etc.) aux jours programmes.
+Appliquer un tri alphabetique (par prenom puis nom) a toutes les listes et menus deroulants affichant des employes dans l'application.
 
 ---
 
-## Modifications
+## Fichiers a modifier
 
-### 1. Base de donnees
+### 1. `src/pages/TimeOff.tsx` (Conges)
+**Localisation** : Ligne ~381 - Menu deroulant "Employe" dans le formulaire de demande de conge
 
-Ajouter une colonne dans `company_settings` :
-
-```text
-+---------------------------+-------------+----------------------------------+
-| Colonne                   | Type        | Description                      |
-+---------------------------+-------------+----------------------------------+
-| commissions_send_mode     | text        | 'manual' ou 'automatic'          |
-|                           |             | Defaut: 'manual'                 |
-+---------------------------+-------------+----------------------------------+
-```
-
-### 2. Interface Parametres Comptabilite
-
-Ajouter un selecteur de mode avant la section d'envoi des commissions :
-
-```text
-+--------------------------------------------------+
-| Mode d'envoi des commissions                     |
-+--------------------------------------------------+
-| (o) Envoi manuel                                 |
-|     Envoyez les commissions quand vous le        |
-|     souhaitez via le bouton ci-dessous           |
-|                                                  |
-| ( ) Envoi automatique                            |
-|     Les commissions seront incluses dans         |
-|     l'envoi automatique programme avec les       |
-|     conges et absences                           |
-+--------------------------------------------------+
-```
-
-**Comportement selon le mode :**
-
-- **Mode Manuel** : La section "Envoi des commissions" reste visible avec le bouton d'envoi
-- **Mode Automatique** : 
-  - Le bouton d'envoi manuel est cache
-  - Un message indique que les commissions seront envoyees automatiquement aux jours selectionnes
-  - Les commissions sont incluses dans le rapport envoye aux jours programmes
-
-### 3. Fichiers a modifier
-
-1. **Migration SQL** - Ajouter `commissions_send_mode` a `company_settings`
-
-2. **AccountingSettings.tsx** - Ajouter le selecteur de mode et gerer l'etat
-
-3. **CommissionsSendSection.tsx** - Recevoir le mode et adapter l'affichage :
-   - Mode manuel : afficher le bouton d'envoi comme actuellement
-   - Mode automatique : afficher un message informatif sans bouton
-
-4. **send-email/index.ts** - Ajouter le type "commissions" pour l'envoi automatique
-
----
-
-## Comportement fonctionnel
-
-### Mode Manuel (par defaut)
-- L'administrateur clique sur "Envoyer au comptable" quand il le souhaite
-- Seules les commissions sont envoyees a ce moment
-
-### Mode Automatique
-- Aux jours programmes (ex: le 1er et le 15 du mois), le systeme envoie automatiquement :
-  - Les conges valides du mois
-  - Les arrets maladie
-  - Les autres absences
-  - **ET les commissions non envoyees**
-- Tout est regroupe dans un seul email au comptable
-
----
-
-## Interface finale
-
-```text
-+--------------------------------------------------+
-| Email du comptable                               |
-| [comptable@cabinet.fr]                           |
-+--------------------------------------------------+
-| Jours d'envoi automatique                        |
-| [1] [15] ...                                     |
-+--------------------------------------------------+
-| Mode d'envoi des commissions                     |
-| (o) Manuel  ( ) Automatique avec les absences    |
-+--------------------------------------------------+
-| Envoi des commissions           [Si mode manuel] |
-| Mois: [Fevrier] [2026]                           |
-| 3 commissions en attente (1250.00 EUR)           |
-| [Envoyer au comptable]                           |
-+--------------------------------------------------+
-|           OU           [Si mode automatique]     |
-| Les commissions seront envoyees automatiquement  |
-| avec les conges et absences aux jours programmes |
-| (1, 15 du mois)                                  |
-+--------------------------------------------------+
+**Modification** : Trier le tableau `employees` avant le `.map()` :
+```typescript
+{[...employees]
+  .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+  .map((emp) => (
+    <SelectItem key={emp.id} value={emp.id}>
+      {emp.first_name} {emp.last_name}
+    </SelectItem>
+  ))}
 ```
 
 ---
 
-## Avantages
+### 2. `src/components/commissions/AddCommissionDialog.tsx` (Commissions)
+**Localisation** : Ligne ~235 - Menu deroulant "Employe" dans le formulaire d'ajout de commission
 
-- Flexibilite pour l'administrateur selon son workflow
-- Les commissions peuvent etre envoyees en meme temps que les autres donnees RH
-- Reduction du nombre d'emails envoyes au comptable (tout regroupe)
-- Possibilite de garder un controle manuel si souhaite
+**Modification** : Meme logique de tri avant le `.map()` :
+```typescript
+{[...employees]
+  .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+  .map((emp) => (
+    ...
+  ))}
+```
+
+---
+
+### 3. `src/pages/Payslips.tsx` (Fiches de paie)
+**Localisation** : Ligne ~546 - Menu deroulant "Employe" dans le formulaire d'import de fiche de paie
+
+**Modification** : Appliquer le tri alphabetique.
+
+---
+
+### 4. `src/pages/Shifts.tsx` (Planning)
+**Localisation** : Ligne ~1013 - Menu deroulant "Employe" dans le formulaire d'ajout de shift
+
+**Modification** : Appliquer le tri alphabetique.
+
+---
+
+### 5. `src/pages/Swaps.tsx` (Echanges)
+**Localisation** : Ligne ~327 - Menu deroulant "Echanger avec" pour selectionner un collegue
+
+**Modification** : Appliquer le tri alphabetique sur `otherEmployees`.
+
+---
+
+### 6. `src/components/time-off/TeamLeaveOverview.tsx` (Vue equipe)
+**Localisation** : Ligne ~264 - Grille des cartes employes
+
+**Modification** : Trier le tableau `employees` avant l'affichage des cartes.
+
+---
+
+## Resultat attendu
+
+Apres ces modifications :
+- Tous les menus deroulants de selection d'employe seront tries de A a Z
+- Toutes les listes affichant des employes (cartes, tableaux) seront triees alphabetiquement
+- Le tri utilise la locale francaise (`'fr'`) pour gerer correctement les accents
+
+---
+
+## Fichiers deja traites (lors de modifications precedentes)
+
+- `src/components/employees/EmployeeTable.tsx` - Deja trie
+- `src/components/shifts/EmployeesListDialog.tsx` - Deja trie
