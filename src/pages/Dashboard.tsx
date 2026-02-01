@@ -60,7 +60,7 @@ const TIME_OFF_LABELS: Record<string, string> = {
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     activeEmployees: 0,
@@ -246,19 +246,21 @@ const Dashboard = () => {
               icon={Clock}
               iconColor="warning"
             />
-            <StatCard
-              title="Échanges en attente"
-              value={stats.pendingSwaps}
-              subtitle="À valider"
-              icon={ArrowLeftRight}
-              iconColor="accent"
-            />
+            {companySettings?.allow_shift_swaps && (
+              <StatCard
+                title="Échanges en attente"
+                value={stats.pendingSwaps}
+                subtitle="À valider"
+                icon={ArrowLeftRight}
+                iconColor="accent"
+              />
+            )}
           </>
         )}
         <StatCard
-          title="Shifts cette semaine"
+          title="Créneaux planifiés"
           value={stats.shiftsThisWeek}
-          subtitle="Planifiés"
+          subtitle="Cette semaine"
           icon={Calendar}
           iconColor="success"
         />
