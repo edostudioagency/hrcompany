@@ -22,11 +22,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Employee, ROLE_LABELS, Team, EMPLOYEE_STATUS_LABELS } from '@/types/hr';
-import { cn } from '@/lib/utils';
+import { cn, sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
 
 interface EmployeeTableProps {
   employees: Employee[];
   teams: Team[];
+  sortOrder?: EmployeeSortOrder;
   onEdit?: (employee: Employee) => void;
   onDelete?: (employee: Employee) => void;
 }
@@ -34,15 +35,15 @@ interface EmployeeTableProps {
 export function EmployeeTable({
   employees,
   teams,
+  sortOrder = 'first_name',
   onEdit,
   onDelete,
 }: EmployeeTableProps) {
-  // Sort employees alphabetically by first name, then last name
-  const sortedEmployees = [...employees].sort((a, b) => {
-    const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-    const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-    return nameA.localeCompare(nameB, 'fr');
-  });
+  // Sort employees using the utility function
+  const sortedEmployees = sortEmployees(
+    employees.map(e => ({ ...e, first_name: e.firstName, last_name: e.lastName })),
+    sortOrder
+  ).map(e => employees.find(emp => emp.id === e.id)!);
 
   const getTeamName = (teamId?: string) => {
     if (!teamId) return '-';

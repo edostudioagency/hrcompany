@@ -11,6 +11,7 @@ interface Company {
 
 interface CompanySettings {
   allow_shift_swaps: boolean;
+  employee_sort_order: 'first_name' | 'last_name';
 }
 
 interface CompanyContextType {
@@ -195,16 +196,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase
         .from('company_settings')
-        .select('allow_shift_swaps')
+        .select('allow_shift_swaps, employee_sort_order')
         .eq('company_id', currentCompany.id)
         .maybeSingle();
       
       setCompanySettings({
         allow_shift_swaps: data?.allow_shift_swaps ?? true,
+        employee_sort_order: (data?.employee_sort_order as 'first_name' | 'last_name') ?? 'first_name',
       });
     } catch (error) {
       console.error('Error fetching company settings:', error);
-      setCompanySettings({ allow_shift_swaps: true });
+      setCompanySettings({ allow_shift_swaps: true, employee_sort_order: 'first_name' });
     }
   }, [currentCompany?.id]);
 

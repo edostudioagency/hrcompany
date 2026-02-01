@@ -53,6 +53,7 @@ import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleD
 import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialog';
 import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
 import { useCompany } from '@/contexts/CompanyContext';
+import { sortEmployees } from '@/lib/utils';
 
 interface EmployeeInvitation {
   invitation_token: string;
@@ -133,7 +134,7 @@ const getContractTypeBadge = (type: string | null) => {
 };
 
 export default function EmployeesPage() {
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -294,15 +295,18 @@ export default function EmployeesPage() {
     });
   };
 
-  const filteredEmployees = employees.filter((e) => {
-    const search = searchQuery.toLowerCase();
-    return (
-      e.first_name.toLowerCase().includes(search) ||
-      e.last_name.toLowerCase().includes(search) ||
-      e.email.toLowerCase().includes(search) ||
-      (e.position?.toLowerCase() || '').includes(search)
-    );
-  });
+  const filteredEmployees = sortEmployees(
+    employees.filter((e) => {
+      const search = searchQuery.toLowerCase();
+      return (
+        e.first_name.toLowerCase().includes(search) ||
+        e.last_name.toLowerCase().includes(search) ||
+        e.email.toLowerCase().includes(search) ||
+        (e.position?.toLowerCase() || '').includes(search)
+      );
+    }),
+    companySettings?.employee_sort_order || 'first_name'
+  );
 
   if (!currentCompany) {
     return (

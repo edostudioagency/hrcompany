@@ -181,6 +181,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           default_work_hours_per_day: number | null
+          employee_sort_order: string | null
           id: string
           leave_calculation_mode: string | null
           paid_leave_per_month: number | null
@@ -199,6 +200,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           default_work_hours_per_day?: number | null
+          employee_sort_order?: string | null
           id?: string
           leave_calculation_mode?: string | null
           paid_leave_per_month?: number | null
@@ -217,6 +219,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           default_work_hours_per_day?: number | null
+          employee_sort_order?: string | null
           id?: string
           leave_calculation_mode?: string | null
           paid_leave_per_month?: number | null

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Calculator, Info, AlertCircle } from 'lucide-react';
+import { sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
 import {
   CommissionType,
   EmployeeCommissionConfig,
@@ -43,6 +44,7 @@ interface AddCommissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employees: Employee[];
+  sortOrder?: EmployeeSortOrder;
   onSuccess: () => void;
 }
 
@@ -65,6 +67,7 @@ export function AddCommissionDialog({
   open,
   onOpenChange,
   employees,
+  sortOrder = 'first_name',
   onSuccess,
 }: AddCommissionDialogProps) {
   const currentYear = new Date().getFullYear();
@@ -232,8 +235,7 @@ export function AddCommissionDialog({
                 <SelectValue placeholder="Sélectionner un employé" />
               </SelectTrigger>
               <SelectContent>
-                {[...employees]
-                  .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+                {sortEmployees(employees, sortOrder || 'first_name')
                   .map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.first_name} {emp.last_name}

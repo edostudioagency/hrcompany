@@ -9,7 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { Loader2, Save, ArrowLeftRight, Calendar, Clock } from 'lucide-react';
+import { Loader2, Save, ArrowLeftRight, Calendar, Clock, Users } from 'lucide-react';
+import type { EmployeeSortOrder } from '@/lib/utils';
 
 interface CompanySettings {
   id: string;
@@ -23,6 +24,7 @@ interface CompanySettings {
   default_work_hours_per_day: number;
   weekly_hours: number;
   leave_calculation_mode: 'jours_ouvres' | 'jours_ouvrables';
+  employee_sort_order: EmployeeSortOrder;
 }
 
 export function RulesSettings() {
@@ -39,7 +41,8 @@ export function RulesSettings() {
     sick_leave_accrual_rate: 0,
     default_work_hours_per_day: 7,
     weekly_hours: 35,
-    leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables'
+    leave_calculation_mode: 'jours_ouvres' as 'jours_ouvres' | 'jours_ouvrables',
+    employee_sort_order: 'first_name' as EmployeeSortOrder
   });
 
   useEffect(() => {
@@ -72,7 +75,8 @@ export function RulesSettings() {
           sick_leave_accrual_rate: Number(settingsData.sick_leave_accrual_rate) || 0,
           default_work_hours_per_day: Number(settingsData.default_work_hours_per_day) || 7,
           weekly_hours: Number(settingsData.weekly_hours) || 35,
-          leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables'
+          leave_calculation_mode: ((settingsData as any).leave_calculation_mode || 'jours_ouvres') as 'jours_ouvres' | 'jours_ouvrables',
+          employee_sort_order: ((settingsData as any).employee_sort_order || 'first_name') as EmployeeSortOrder
         });
       } else {
         setSettings(null);
@@ -166,6 +170,55 @@ export function RulesSettings() {
             ...formData,
             allow_shift_swaps: checked
           })} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Employee Display */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">Affichage des employés</CardTitle>
+          </div>
+          <CardDescription>
+            Configurez l'ordre d'affichage des listes d'employés
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Label>Trier les listes d'employés par :</Label>
+            <RadioGroup 
+              value={formData.employee_sort_order} 
+              onValueChange={(value: EmployeeSortOrder) => setFormData({
+                ...formData,
+                employee_sort_order: value
+              })} 
+              className="flex flex-col space-y-2"
+            >
+              <div className="flex items-center space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="first_name" id="sort_first_name" />
+                <div className="flex-1">
+                  <Label htmlFor="sort_first_name" className="font-medium cursor-pointer">
+                    Prénom
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ex: Alice Martin, Benoît Dupont
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 rounded-lg border p-3">
+                <RadioGroupItem value="last_name" id="sort_last_name" />
+                <div className="flex-1">
+                  <Label htmlFor="sort_last_name" className="font-medium cursor-pointer">
+                    Nom
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ex: Benoît Dupont, Alice Martin
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
           </div>
         </CardContent>
       </Card>

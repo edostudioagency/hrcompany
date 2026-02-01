@@ -40,7 +40,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CalendarIcon, Check, X, Loader2, ArrowRightLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, sortEmployees } from '@/lib/utils';
 
 interface ShiftSwapRequest {
   id: string;
@@ -86,7 +86,7 @@ const statusBadge = (status: string) => {
 
 const Swaps = () => {
   const { role, user } = useAuth();
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [requests, setRequests] = useState<ShiftSwapRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -324,8 +324,7 @@ const Swaps = () => {
                         <SelectValue placeholder="Sélectionner un collègue" />
                       </SelectTrigger>
                       <SelectContent>
-                        {[...otherEmployees]
-                          .sort((a, b) => `${a.first_name} ${a.last_name}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name}`.toLowerCase(), 'fr'))
+                        {sortEmployees(otherEmployees, companySettings?.employee_sort_order || 'first_name')
                           .map((emp) => (
                             <SelectItem key={emp.id} value={emp.id}>
                               {emp.first_name} {emp.last_name}
