@@ -30,6 +30,13 @@ export function EmployeesListDialog({
   employees,
   onEmployeeClick,
 }: EmployeesListDialogProps) {
+  // Sort employees alphabetically
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+    return nameA.localeCompare(nameB, 'fr');
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -38,7 +45,7 @@ export function EmployeesListDialog({
         </DialogHeader>
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-2">
-            {employees.map((employee) => (
+            {sortedEmployees.map((employee) => (
               <div
                 key={employee.id}
                 className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"

@@ -37,6 +37,13 @@ export function EmployeeTable({
   onEdit,
   onDelete,
 }: EmployeeTableProps) {
+  // Sort employees alphabetically by first name, then last name
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+    const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+    return nameA.localeCompare(nameB, 'fr');
+  });
+
   const getTeamName = (teamId?: string) => {
     if (!teamId) return '-';
     return teams.find((t) => t.id === teamId)?.name || '-';
@@ -112,7 +119,7 @@ export function EmployeeTable({
               </TableCell>
             </TableRow>
           ) : (
-            employees.map((employee) => (
+            sortedEmployees.map((employee) => (
               <TableRow
                 key={employee.id}
                 className="group hover:bg-secondary/20"
