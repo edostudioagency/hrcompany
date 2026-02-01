@@ -11,7 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { Loader2, Send, FileText, Euro } from 'lucide-react';
+import { Loader2, Send, FileText, Euro, CalendarClock, Info } from 'lucide-react';
 
 interface Commission {
   id: string;
@@ -40,9 +40,15 @@ const MONTHS = [
 
 interface CommissionsSendSectionProps {
   accountantEmail: string | null;
+  sendMode: 'manual' | 'automatic';
+  notificationDays: number[];
 }
 
-export function CommissionsSendSection({ accountantEmail }: CommissionsSendSectionProps) {
+export function CommissionsSendSection({ 
+  accountantEmail, 
+  sendMode, 
+  notificationDays 
+}: CommissionsSendSectionProps) {
   const { currentCompany } = useCompany();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -146,6 +152,56 @@ export function CommissionsSendSection({ accountantEmail }: CommissionsSendSecti
     }
   };
 
+  const formatNotificationDays = () => {
+    if (notificationDays.length === 0) return 'Aucun jour configuré';
+    return notificationDays.join(', ');
+  };
+
+  // Mode automatique : afficher un message informatif
+  if (sendMode === 'automatic') {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">Envoi automatique des commissions</CardTitle>
+          </div>
+          <CardDescription>
+            Les commissions sont incluses dans l'envoi automatique
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="space-y-2">
+                <p className="text-sm">
+                  Les commissions non envoyées seront automatiquement incluses dans le rapport 
+                  envoyé au comptable avec les congés et absences.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Jours d'envoi programmés :</strong> {formatNotificationDays()} du mois
+                </p>
+                {accountantEmail && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Destinataire :</strong> {accountantEmail}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {!accountantEmail && (
+            <p className="text-sm text-destructive text-center mt-4">
+              Configurez l'email du comptable ci-dessus pour activer l'envoi automatique
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Mode manuel : afficher le formulaire d'envoi
   return (
     <Card>
       <CardHeader>

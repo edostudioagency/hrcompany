@@ -177,6 +177,7 @@ export type Database = {
           accountant_notification_days: number[] | null
           allow_shift_swaps: boolean | null
           annual_paid_leave_days: number | null
+          commissions_send_mode: string
           company_id: string | null
           created_at: string
           default_work_hours_per_day: number | null
@@ -194,6 +195,7 @@ export type Database = {
           accountant_notification_days?: number[] | null
           allow_shift_swaps?: boolean | null
           annual_paid_leave_days?: number | null
+          commissions_send_mode?: string
           company_id?: string | null
           created_at?: string
           default_work_hours_per_day?: number | null
@@ -211,6 +213,7 @@ export type Database = {
           accountant_notification_days?: number[] | null
           allow_shift_swaps?: boolean | null
           annual_paid_leave_days?: number | null
+          commissions_send_mode?: string
           company_id?: string | null
           created_at?: string
           default_work_hours_per_day?: number | null
