@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { Loader2, Save, Calculator, Mail } from 'lucide-react';
+import { Loader2, Save, Calculator, Mail, Settings2 } from 'lucide-react';
 import { CommissionsSendSection } from './CommissionsSendSection';
 
 interface CompanySettings {
@@ -15,6 +16,7 @@ interface CompanySettings {
   company_id: string;
   accountant_email: string | null;
   accountant_notification_days: number[];
+  commissions_send_mode: 'manual' | 'automatic';
 }
 
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -27,6 +29,7 @@ export function AccountingSettings() {
   const [formData, setFormData] = useState({
     accountant_email: '',
     accountant_notification_days: [1] as number[],
+    commissions_send_mode: 'manual' as 'manual' | 'automatic',
   });
 
   useEffect(() => {
@@ -42,17 +45,18 @@ export function AccountingSettings() {
     try {
       const { data: settingsData, error } = await supabase
         .from('company_settings')
-        .select('id, company_id, accountant_email, accountant_notification_days')
+        .select('id, company_id, accountant_email, accountant_notification_days, commissions_send_mode')
         .eq('company_id', currentCompany.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
       if (settingsData) {
-        setSettings(settingsData);
+        setSettings(settingsData as CompanySettings);
         setFormData({
           accountant_email: settingsData.accountant_email || '',
           accountant_notification_days: settingsData.accountant_notification_days || [1],
+          commissions_send_mode: (settingsData.commissions_send_mode as 'manual' | 'automatic') || 'manual',
         });
       } else {
         setSettings(null);
@@ -93,6 +97,7 @@ export function AccountingSettings() {
       const updateData = {
         accountant_email: formData.accountant_email || null,
         accountant_notification_days: formData.accountant_notification_days,
+        commissions_send_mode: formData.commissions_send_mode,
       };
 
       if (settings) {
@@ -110,7 +115,7 @@ export function AccountingSettings() {
           .single();
 
         if (error) throw error;
-        setSettings(data);
+        setSettings(data as CompanySettings);
       }
       toast.success('Paramètres de comptabilité enregistrés');
     } catch (error) {
@@ -210,6 +215,50 @@ export function AccountingSettings() {
                 ? formData.accountant_notification_days.join(', ')
                 : 'Aucun'}
             </p>
+        </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Mode d'envoi des commissions</CardTitle>
+            </div>
+            <CardDescription>
+              Choisissez comment les commissions seront envoyées au comptable
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={formData.commissions_send_mode}
+              onValueChange={(value: 'manual' | 'automatic') => 
+                setFormData({ ...formData, commissions_send_mode: value })
+              }
+              className="space-y-4"
+            >
+              <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="manual" id="manual" className="mt-1" />
+                <div className="space-y-1">
+                  <Label htmlFor="manual" className="font-medium cursor-pointer">
+                    Envoi manuel
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Envoyez les commissions quand vous le souhaitez via le bouton ci-dessous
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="automatic" id="automatic" className="mt-1" />
+                <div className="space-y-1">
+                  <Label htmlFor="automatic" className="font-medium cursor-pointer">
+                    Envoi automatique avec les absences
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Les commissions seront incluses dans l'envoi automatique programmé avec les congés et arrêts maladie
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
           </CardContent>
         </Card>
 
@@ -225,7 +274,11 @@ export function AccountingSettings() {
         </div>
       </form>
 
-      <CommissionsSendSection accountantEmail={formData.accountant_email || null} />
+      <CommissionsSendSection 
+        accountantEmail={formData.accountant_email || null} 
+        sendMode={formData.commissions_send_mode}
+        notificationDays={formData.accountant_notification_days}
+      />
     </div>
   );
 }

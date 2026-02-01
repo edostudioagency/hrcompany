@@ -20,13 +20,13 @@ const getCorsHeaders = (origin: string | null) => {
 };
 
 interface EmailRequest {
-  type: "invitation" | "schedule_change" | "time_off" | "shift_swap";
+  type: "invitation" | "schedule_change" | "time_off" | "shift_swap" | "commissions";
   recipientEmail: string;
   recipientName: string;
   data: Record<string, unknown>;
 }
 
-const VALID_EMAIL_TYPES = ["invitation", "schedule_change", "time_off", "shift_swap"];
+const VALID_EMAIL_TYPES = ["invitation", "schedule_change", "time_off", "shift_swap", "commissions"];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getEmailContent = (type: string, recipientName: string, data: Record<string, unknown>) => {
@@ -116,6 +116,33 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
                       text-decoration: none; border-radius: 8px; margin: 16px 0;">
               Voir les échanges
             </a>
+          </div>
+        `,
+      };
+    
+    case "commissions":
+      const commissionsData = data.commissions as string || "";
+      const commissionsTotal = data.total as number || 0;
+      const commissionsMonth = data.month as string || "";
+      const commissionsYear = data.year as number || new Date().getFullYear();
+      
+      return {
+        subject: `Commissions - ${commissionsMonth} ${commissionsYear}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">Commissions du mois</h1>
+            <p>Bonjour ${recipientName},</p>
+            <p>Voici le récapitulatif des commissions pour <strong>${commissionsMonth} ${commissionsYear}</strong> :</p>
+            <div style="background-color: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <pre style="white-space: pre-wrap; font-family: monospace; margin: 0;">${commissionsData}</pre>
+            </div>
+            <p style="font-size: 18px; font-weight: bold; color: #6366f1;">
+              Total : ${commissionsTotal.toFixed(2)} €
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #666; font-size: 14px;">
+              Cet email a été généré automatiquement par HR Manager.
+            </p>
           </div>
         `,
       };
