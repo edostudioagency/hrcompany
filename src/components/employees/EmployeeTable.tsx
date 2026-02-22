@@ -22,7 +22,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Employee, ROLE_LABELS, Team, EMPLOYEE_STATUS_LABELS } from '@/types/hr';
-import { cn, sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
+import { cn, sortEmployees, formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from '@/lib/utils';
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -128,15 +128,14 @@ export function EmployeeTable({
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={employee.avatarUrl || undefined} alt={`${employee.firstName} ${employee.lastName}`} />
+                      <AvatarImage src={employee.avatarUrl || undefined} alt={formatEmployeeName(employee.firstName, employee.lastName, sortOrder)} />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                        {employee.firstName[0]}
-                        {employee.lastName[0]}
+                        {getEmployeeInitials(employee.firstName, employee.lastName, sortOrder)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium text-foreground">
-                        {employee.firstName} {employee.lastName}
+                        {formatEmployeeName(employee.firstName, employee.lastName, sortOrder)}
                       </p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Mail className="w-3 h-3" />

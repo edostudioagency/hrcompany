@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/contexts/CompanyContext';
+import { formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -95,6 +97,8 @@ export function EmployeeDetailDialog({
   onUpdate,
 }: EmployeeDetailDialogProps) {
   const { role } = useAuth();
+  const { companySettings } = useCompany();
+  const sortOrder = companySettings?.employee_sort_order || 'first_name';
   const isAdmin = role === 'admin';
   const isManagerOrAdmin = role === 'manager' || role === 'admin';
   
@@ -357,11 +361,11 @@ export function EmployeeDetailDialog({
           <DialogTitle className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="font-medium text-primary">
-                {employee.first_name[0]}{employee.last_name[0]}
+                {getEmployeeInitials(employee.first_name, employee.last_name, sortOrder)}
               </span>
             </div>
             <div>
-              <span>{employee.first_name} {employee.last_name}</span>
+              <span>{formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}</span>
               <p className="text-sm font-normal text-muted-foreground">{employee.email}</p>
             </div>
           </DialogTitle>

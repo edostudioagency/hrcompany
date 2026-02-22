@@ -203,7 +203,7 @@ export function RulesSettings() {
                     Prénom
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Ex: Alice Martin, Benoît Dupont
+                    Ex: Alice Martin, Benoît Dupont (affiché : Alice Martin)
                   </p>
                 </div>
               </div>
@@ -214,7 +214,7 @@ export function RulesSettings() {
                     Nom
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Ex: Benoît Dupont, Alice Martin
+                    Ex: Dupont Benoît, Martin Alice (affiché : Martin Alice)
                   </p>
                 </div>
               </div>

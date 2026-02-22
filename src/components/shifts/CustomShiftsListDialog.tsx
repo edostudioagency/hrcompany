@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pencil, Trash2, Clock, MapPin } from 'lucide-react';
+import { formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from '@/lib/utils';
 
 interface Shift {
   id: string;
@@ -40,6 +41,7 @@ interface CustomShiftsListDialogProps {
   onOpenChange: (open: boolean) => void;
   shifts: Shift[];
   locations: Location[];
+  sortOrder?: EmployeeSortOrder;
   onEditShift?: (shift: Shift) => void;
   onDeleteShift?: (shiftId: string) => void;
 }
@@ -49,6 +51,7 @@ export function CustomShiftsListDialog({
   onOpenChange,
   shifts,
   locations,
+  sortOrder = 'first_name',
   onEditShift,
   onDeleteShift,
 }: CustomShiftsListDialogProps) {
@@ -81,13 +84,12 @@ export function CustomShiftsListDialog({
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={shift.employee?.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {shift.employee?.first_name?.[0] || '?'}
-                      {shift.employee?.last_name?.[0] || ''}
+                      {getEmployeeInitials(shift.employee?.first_name || '?', shift.employee?.last_name || '', sortOrder)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">
-                      {shift.employee?.first_name} {shift.employee?.last_name}
+                      {shift.employee ? formatEmployeeName(shift.employee.first_name, shift.employee.last_name, sortOrder) : '?'}
                     </p>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">

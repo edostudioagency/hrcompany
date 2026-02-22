@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/contexts/CompanyContext';
-import { sortEmployees } from '@/lib/utils';
+import { sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 
 interface Payslip {
   id: string;
@@ -447,13 +447,12 @@ export default function PayslipsPage() {
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                             <span className="text-sm font-medium text-primary">
-                              {payslip.employee?.first_name[0]}
-                              {payslip.employee?.last_name[0]}
+                              {payslip.employee ? getEmployeeInitials(payslip.employee.first_name, payslip.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                             </span>
                           </div>
                           <div>
                             <p className="font-medium">
-                              {payslip.employee?.first_name} {payslip.employee?.last_name}
+                              {payslip.employee ? formatEmployeeName(payslip.employee.first_name, payslip.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {payslip.employee?.email}
@@ -547,7 +546,7 @@ export default function PayslipsPage() {
                   {sortEmployees(employees, companySettings?.employee_sort_order || 'first_name')
                     .map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
-                        {emp.first_name} {emp.last_name}
+                        {formatEmployeeName(emp.first_name, emp.last_name, companySettings?.employee_sort_order || 'first_name')}
                       </SelectItem>
                     ))}
                 </SelectContent>

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Trash2, Undo2 } from "lucide-react";
+import { formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -41,7 +42,8 @@ interface EmployeeDayDetailDialogProps {
   location?: string;
   shiftId?: string;
   isFromSchedule: boolean;
-  cancelledShiftId?: string; // ID of cancelled shift if this day was moved
+  cancelledShiftId?: string;
+  sortOrder?: EmployeeSortOrder;
   onSaveHours: (employeeId: string, date: Date, startTime: string, endTime: string, location: string) => Promise<void>;
   onCreateTimeOff: (employeeId: string, date: Date, type: string) => Promise<void>;
   onDeleteShift?: (shiftId: string) => Promise<void>;
@@ -68,6 +70,7 @@ export function EmployeeDayDetailDialog({
   shiftId,
   isFromSchedule,
   cancelledShiftId,
+  sortOrder = 'first_name',
   onSaveHours,
   onCreateTimeOff,
   onDeleteShift,
@@ -141,12 +144,12 @@ export function EmployeeDayDetailDialog({
             <Avatar className="h-12 w-12">
               <AvatarImage src={employee.avatar_url || undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(employee.first_name, employee.last_name)}
+                {getEmployeeInitials(employee.first_name, employee.last_name, sortOrder)}
               </AvatarFallback>
             </Avatar>
             <div>
               <DialogTitle className="text-left">
-                {employee.first_name} {employee.last_name}
+                {formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}
               </DialogTitle>
               {employee.position && (
                 <p className="text-sm text-muted-foreground">{employee.position}</p>

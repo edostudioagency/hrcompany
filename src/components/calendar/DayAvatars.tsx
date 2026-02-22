@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -45,6 +45,7 @@ interface DayAvatarsProps {
   timeOffs: TimeOff[];
   employees: Employee[];
   maxVisible?: number;
+  sortOrder?: EmployeeSortOrder;
   onShiftClick?: (shift: Shift, employee: Employee) => void;
   onTimeOffClick?: (timeOff: TimeOff, employee: Employee) => void;
   getTimeOffLabel?: (type: string) => string;
@@ -58,6 +59,7 @@ export function DayAvatars({
   timeOffs,
   employees,
   maxVisible = 4,
+  sortOrder = 'first_name',
   onShiftClick,
   onTimeOffClick,
   getTimeOffLabel,
@@ -127,14 +129,13 @@ export function DayAvatars({
               >
                 <AvatarImage src={employee?.avatar_url || undefined} alt={employee?.first_name} />
                 <AvatarFallback className="text-[10px] bg-blue-100 text-blue-700 font-medium">
-                  {employee?.first_name?.[0]}
-                  {employee?.last_name?.[0]}
+                  {getEmployeeInitials(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                 </AvatarFallback>
               </Avatar>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
               <p className="font-medium">
-                {employee?.first_name} {employee?.last_name}
+                {formatEmployeeName(employee?.first_name || '', employee?.last_name || '', sortOrder)}
               </p>
               <p className="text-muted-foreground">
                 {shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}
@@ -159,14 +160,13 @@ export function DayAvatars({
               >
                 <AvatarImage src={employee?.avatar_url || undefined} alt={employee?.first_name} />
                 <AvatarFallback className="text-[10px] bg-red-100 text-red-700 font-medium">
-                  {employee?.first_name?.[0]}
-                  {employee?.last_name?.[0]}
+                  {getEmployeeInitials(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                 </AvatarFallback>
               </Avatar>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
               <p className="font-medium">
-                {employee?.first_name} {employee?.last_name}
+                {formatEmployeeName(employee?.first_name || '', employee?.last_name || '', sortOrder)}
               </p>
               <p className="text-red-600">{getTimeOffLabel?.(timeOff.type) || "Absent"}</p>
             </TooltipContent>
@@ -206,14 +206,13 @@ export function DayAvatars({
                         >
                           <Avatar className="w-6 h-6 ring-1 ring-blue-500">
                             <AvatarImage src={employee?.avatar_url || undefined} />
-                            <AvatarFallback className="text-[9px] bg-blue-100 text-blue-700">
-                              {employee?.first_name?.[0]}
-                              {employee?.last_name?.[0]}
+                          <AvatarFallback className="text-[9px] bg-blue-100 text-blue-700">
+                              {getEmployeeInitials(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">
-                              {employee?.first_name} {employee?.last_name}
+                              {formatEmployeeName(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}
@@ -244,14 +243,13 @@ export function DayAvatars({
                         >
                           <Avatar className="w-6 h-6 ring-1 ring-red-500">
                             <AvatarImage src={employee?.avatar_url || undefined} />
-                            <AvatarFallback className="text-[9px] bg-red-100 text-red-700">
-                              {employee?.first_name?.[0]}
-                              {employee?.last_name?.[0]}
+                          <AvatarFallback className="text-[9px] bg-red-100 text-red-700">
+                              {getEmployeeInitials(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">
-                              {employee?.first_name} {employee?.last_name}
+                              {formatEmployeeName(employee?.first_name || '', employee?.last_name || '', sortOrder)}
                             </p>
                             <p className="text-[10px] text-red-600">
                               {getTimeOffLabel?.(timeOff.type) || "Absent"}

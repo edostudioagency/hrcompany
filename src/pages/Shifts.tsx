@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn, sortEmployees } from '@/lib/utils';
+import { cn, sortEmployees, formatEmployeeName } from '@/lib/utils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DayAvatars } from '@/components/calendar/DayAvatars';
 import { DayDetailDialog } from '@/components/calendar/DayDetailDialog';
@@ -922,6 +922,7 @@ export default function ShiftsPage() {
                       timeOffs={dayTimeOff}
                       employees={employees}
                       maxVisible={viewMode === 'week' ? 6 : 4}
+                      sortOrder={companySettings?.employee_sort_order || 'first_name'}
                       getTimeOffLabel={getTimeOffLabel}
                       onShiftClick={(shift, employee) => handleShiftClick(shift as Shift, employee as Employee, day)}
                       onDragStart={(e, employee, shift) => handleDragStart(e, employee as Employee, shift as Shift, day)}
@@ -960,6 +961,7 @@ export default function ShiftsPage() {
         shifts={dayDetailDate ? getScheduledEmployeesForDay(dayDetailDate) : []}
         timeOffs={dayDetailDate ? getTimeOffForDay(dayDetailDate) : []}
         employees={employees}
+        sortOrder={companySettings?.employee_sort_order || 'first_name'}
         getTimeOffLabel={getTimeOffLabel}
         onShiftClick={(shift, employee) => {
           setDayDetailDialogOpen(false);
@@ -981,6 +983,7 @@ export default function ShiftsPage() {
         shiftId={selectedShiftData?.shiftId}
         isFromSchedule={selectedShiftData?.isFromSchedule || false}
         cancelledShiftId={selectedShiftData?.cancelledShiftId}
+        sortOrder={companySettings?.employee_sort_order || 'first_name'}
         onSaveHours={handleSaveHours}
         onCreateTimeOff={handleCreateTimeOff}
         onDeleteShift={selectedShiftData?.shiftId ? handleDeleteCustomShift : undefined}
@@ -1013,7 +1016,7 @@ export default function ShiftsPage() {
                   {sortEmployees(employees, companySettings?.employee_sort_order || 'first_name')
                     .map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
-                        {emp.first_name} {emp.last_name}
+                        {formatEmployeeName(emp.first_name, emp.last_name, companySettings?.employee_sort_order || 'first_name')}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -1099,6 +1102,7 @@ export default function ShiftsPage() {
         onOpenChange={setCustomShiftsListOpen}
         shifts={shifts}
         locations={locations}
+        sortOrder={companySettings?.employee_sort_order || 'first_name'}
         onEditShift={(shift) => {
           setCustomShiftsListOpen(false);
           setEditingShift(shift);

@@ -7,6 +7,26 @@ export function cn(...inputs: ClassValue[]) {
 
 export type EmployeeSortOrder = 'first_name' | 'last_name';
 
+export function formatEmployeeName(
+  firstName: string,
+  lastName: string,
+  sortOrder: EmployeeSortOrder = 'first_name'
+): string {
+  return sortOrder === 'last_name'
+    ? `${lastName} ${firstName}`
+    : `${firstName} ${lastName}`;
+}
+
+export function getEmployeeInitials(
+  firstName: string,
+  lastName: string,
+  sortOrder: EmployeeSortOrder = 'first_name'
+): string {
+  return sortOrder === 'last_name'
+    ? `${lastName[0]}${firstName[0]}`
+    : `${firstName[0]}${lastName[0]}`;
+}
+
 export function sortEmployees<T extends { 
   first_name: string; 
   last_name: string;
