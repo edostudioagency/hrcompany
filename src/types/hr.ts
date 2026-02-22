@@ -1,7 +1,10 @@
 // Enums
 export type UserRole = 'employee' | 'manager' | 'admin' | 'accountant';
 export type ShiftStatus = 'planned' | 'completed' | 'cancelled';
-export type TimeOffType = 'conge_paye' | 'rtt' | 'maladie' | 'sans_solde' | 'autre';
+export type TimeOffType = 
+  | 'conge_paye' | 'rtt' | 'maladie' | 'sans_solde' | 'autre'
+  // Congés légaux événements familiaux (Art. L3142-1 Code du travail)
+  | 'marriage' | 'pacs' | 'birth' | 'death' | 'move';
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type PartOfDay = 'full_day' | 'morning' | 'afternoon';
 export type ExportFormat = 'csv' | 'xlsx';
@@ -151,6 +154,12 @@ export const TIME_OFF_TYPE_LABELS: Record<TimeOffType, string> = {
   maladie: 'Maladie',
   sans_solde: 'Sans solde',
   autre: 'Autre',
+  // Congés légaux événements familiaux
+  marriage: 'Mariage (4j ouvrables)',
+  pacs: 'PACS (4j ouvrables)',
+  birth: 'Naissance / Adoption (3j)',
+  death: 'Décès (3-5j)',
+  move: 'Déménagement',
 };
 
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {

@@ -133,6 +133,12 @@ export const LEAVE_TYPE_LABELS: Record<string, string> = {
   personal: 'Personnel',
   autre: 'Autre',
   other: 'Autre',
+  // Congés légaux événements familiaux (Art. L3142-1 Code du travail)
+  marriage: 'Mariage (4j)',
+  pacs: 'PACS (4j)',
+  birth: 'Naissance / Adoption (3j)',
+  death: 'Décès (3-5j)',
+  move: 'Déménagement',
 };
 
 /**

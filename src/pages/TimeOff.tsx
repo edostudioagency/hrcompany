@@ -140,9 +140,11 @@ const TimeOff = () => {
     : currentEmployeeIsExecutive;
 
   // Leave types available based on executive status
+  // Special legal leaves (Art. L3142-1 Code du travail) available to all
+  const specialLeaveTypes = ['marriage', 'pacs', 'birth', 'death', 'move'];
   const availableLeaveTypes = selectedEmployeeIsExecutive
-    ? ['conge_paye', 'rtt', 'maladie', 'sans_solde', 'autre']
-    : ['conge_paye', 'maladie', 'sans_solde', 'autre'];
+    ? ['conge_paye', 'rtt', 'maladie', 'sans_solde', 'autre', ...specialLeaveTypes]
+    : ['conge_paye', 'maladie', 'sans_solde', 'autre', ...specialLeaveTypes];
 
   const fetchData = async () => {
     if (!currentCompany?.id) {
