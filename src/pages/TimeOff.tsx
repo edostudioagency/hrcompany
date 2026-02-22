@@ -58,6 +58,7 @@ interface TimeOffRequest {
   reason: string | null;
   status: string;
   created_at: string;
+  part_of_day?: string;
   employee?: {
     first_name: string;
     last_name: string;
@@ -65,6 +66,12 @@ interface TimeOffRequest {
     avatar_url: string | null;
   };
 }
+
+const PART_OF_DAY_LABELS: Record<string, string> = {
+  full_day: 'Journée complète',
+  morning: 'Matin',
+  afternoon: 'Après-midi',
+};
 
 const typeLabels: Record<string, string> = {
   vacation: 'Congés payés',
@@ -111,9 +118,14 @@ const TimeOff = () => {
     type: 'conge_paye',
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
+    partOfDay: 'full_day' as string,
     reason: '',
     employeeId: '',
   });
+
+  // Half-day only makes sense for single-day requests
+  const isSingleDay = formData.startDate && formData.endDate && 
+    format(formData.startDate, 'yyyy-MM-dd') === format(formData.endDate, 'yyyy-MM-dd');
 
   const isManagerOrAdmin = role === 'manager' || role === 'admin';
   const canCreateRequest = isManagerOrAdmin || currentEmployeeId;
@@ -206,14 +218,15 @@ const TimeOff = () => {
         start_date: format(formData.startDate, 'yyyy-MM-dd'),
         end_date: format(formData.endDate, 'yyyy-MM-dd'),
         type: formData.type,
+        part_of_day: isSingleDay ? formData.partOfDay : 'full_day',
         reason: formData.reason || null,
-      });
+      } as any);
 
       if (error) throw error;
 
       toast.success('Demande soumise avec succès');
       setIsFormOpen(false);
-      setFormData({ type: 'conge_paye', startDate: undefined, endDate: undefined, reason: '', employeeId: '' });
+      setFormData({ type: 'conge_paye', startDate: undefined, endDate: undefined, partOfDay: 'full_day', reason: '', employeeId: '' });
       fetchData();
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -233,10 +246,11 @@ const TimeOff = () => {
       if (error) throw error;
 
       // Calculate working days and update balance
+      const partOfDay = (request as any).part_of_day || 'full_day';
       const daysUsed = calculateWorkingDays(
         new Date(request.start_date),
         new Date(request.end_date),
-        'full_day'
+        partOfDay
       );
 
       try {
@@ -456,6 +470,33 @@ const TimeOff = () => {
                       </Popover>
                     </div>
                   </div>
+
+                  {/* Part of day selector */}
+                  <div className="space-y-2">
+                    <Label>Durée</Label>
+                    <Select 
+                      value={formData.partOfDay} 
+                      onValueChange={(v) => setFormData({ ...formData, partOfDay: v })}
+                      disabled={!isSingleDay}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PART_OF_DAY_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!isSingleDay && formData.startDate && formData.endDate && (
+                      <p className="text-xs text-muted-foreground">
+                        La demi-journée n'est disponible que pour une demande sur un seul jour.
+                      </p>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Motif (optionnel)</Label>
                     <Textarea
@@ -472,7 +513,7 @@ const TimeOff = () => {
                       startDate={formData.startDate}
                       endDate={formData.endDate}
                       leaveType={formData.type}
-                      partOfDay="full_day"
+                      partOfDay={isSingleDay ? (formData.partOfDay as any) : 'full_day'}
                     />
                   )}
                 </div>
@@ -541,6 +582,11 @@ const TimeOff = () => {
                               <TableCell>{typeLabels[request.type] || request.type}</TableCell>
                               <TableCell>
                                 {format(new Date(request.start_date), 'dd/MM/yyyy')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
+                                {(request as any).part_of_day && (request as any).part_of_day !== 'full_day' && (
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    ({PART_OF_DAY_LABELS[(request as any).part_of_day] || (request as any).part_of_day})
+                                  </span>
+                                )}
                               </TableCell>
                               <TableCell className="max-w-[200px] truncate">
                                 {request.reason || '-'}
@@ -630,6 +676,11 @@ const TimeOff = () => {
                             <TableCell>{typeLabels[request.type] || request.type}</TableCell>
                             <TableCell>
                               {format(new Date(request.start_date), 'dd/MM')} - {format(new Date(request.end_date), 'dd/MM/yyyy')}
+                              {(request as any).part_of_day && (request as any).part_of_day !== 'full_day' && (
+                                <span className="ml-1 text-xs text-muted-foreground">
+                                  ({PART_OF_DAY_LABELS[(request as any).part_of_day] || (request as any).part_of_day})
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell>{statusBadge(request.status)}</TableCell>
                             <TableCell className="text-muted-foreground">

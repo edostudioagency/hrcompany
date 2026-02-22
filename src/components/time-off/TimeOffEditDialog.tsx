@@ -34,11 +34,18 @@ interface TimeOffRequest {
   type: string;
   reason: string | null;
   status: string;
+  part_of_day?: string;
   employee?: {
     first_name: string;
     last_name: string;
   };
 }
+
+const PART_OF_DAY_LABELS: Record<string, string> = {
+  full_day: 'Journée complète',
+  morning: 'Matin',
+  afternoon: 'Après-midi',
+};
 
 interface TimeOffEditDialogProps {
   open: boolean;
@@ -58,14 +65,19 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
   const [type, setType] = useState('vacation');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [partOfDay, setPartOfDay] = useState('full_day');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const isSingleDay = startDate && endDate && 
+    format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd');
 
   useEffect(() => {
     if (request) {
       setType(request.type);
       setStartDate(parseISO(request.start_date));
       setEndDate(parseISO(request.end_date));
+      setPartOfDay((request as any).part_of_day || 'full_day');
       setReason(request.reason || '');
     }
   }, [request]);
@@ -91,8 +103,9 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
           type,
           start_date: format(startDate, 'yyyy-MM-dd'),
           end_date: format(endDate, 'yyyy-MM-dd'),
+          part_of_day: isSingleDay ? partOfDay : 'full_day',
           reason: reason || null,
-        })
+        } as any)
         .eq('id', request.id);
 
       if (error) throw error;
@@ -215,6 +228,30 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Durée</Label>
+            <Select 
+              value={partOfDay} 
+              onValueChange={setPartOfDay}
+              disabled={!isSingleDay}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PART_OF_DAY_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isSingleDay && startDate && endDate && (
+              <p className="text-xs text-muted-foreground">
+                La demi-journée n'est disponible que pour une demande sur un seul jour.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Motif (optionnel)</Label>
