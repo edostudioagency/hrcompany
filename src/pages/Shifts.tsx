@@ -270,7 +270,7 @@ export default function ShiftsPage() {
 
   const getTimeOffForDay = (day: Date) =>
     timeOffRequests.filter(
-      (t) => new Date(t.start_date) <= day && new Date(t.end_date) >= day
+      (t) => new Date(t.start_date + 'T00:00:00') <= day && new Date(t.end_date + 'T00:00:00') >= day
     );
 
   // Get employees scheduled to work on a given day based on their weekly schedule
