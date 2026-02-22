@@ -761,6 +761,7 @@ export type Database = {
           employee_id: string
           end_date: string
           id: string
+          part_of_day: string
           reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -774,6 +775,7 @@ export type Database = {
           employee_id: string
           end_date: string
           id?: string
+          part_of_day?: string
           reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -787,6 +789,7 @@ export type Database = {
           employee_id?: string
           end_date?: string
           id?: string
+          part_of_day?: string
           reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
