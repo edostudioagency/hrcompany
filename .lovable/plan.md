@@ -1,85 +1,62 @@
 
 
-# Plan : Modifier et supprimer des commissions
+# Plan : Demandes de conges a la demi-journee
 
 ## Resume
 
-Ajouter des boutons d'action (modifier / supprimer) sur chaque ligne du tableau des commissions, avec une boite de dialogue de confirmation pour la suppression et la reutilisation du dialogue existant en mode edition.
+Ajouter la possibilite de choisir "Matin" ou "Apres-midi" (demi-journee) lors d'une demande de conge. Actuellement, le champ `part_of_day` n'existe pas dans la base de donnees et le formulaire de demande ne propose pas cette option.
 
 ---
 
 ## Modifications
 
-### 1. Fichier : `src/components/commissions/AddCommissionDialog.tsx`
+### 1. Base de donnees : ajouter la colonne `part_of_day`
 
-Transformer le dialogue pour supporter le mode edition :
+Ajouter une colonne `part_of_day` a la table `time_off_requests` avec une valeur par defaut `'full_day'` pour ne pas casser les demandes existantes.
 
-- Ajouter une prop optionnelle `editCommission` contenant les donnees de la commission a modifier
-- Changer le titre du dialogue dynamiquement ("Ajouter" vs "Modifier")
-- Pre-remplir le formulaire avec les donnees existantes en mode edition
-- En mode edition, utiliser `update` au lieu de `upsert` (mise a jour par `id`)
-- Desactiver le changement d'employe en mode edition
+```sql
+ALTER TABLE public.time_off_requests
+ADD COLUMN part_of_day text NOT NULL DEFAULT 'full_day';
+```
 
-### 2. Fichier : `src/pages/Commissions.tsx`
+### 2. Fichier : `src/pages/TimeOff.tsx`
 
-- Ajouter une colonne "Actions" au tableau avec deux boutons :
-  - Bouton crayon (Modifier) : ouvre le dialogue en mode edition avec les donnees de la commission
-  - Bouton poubelle (Supprimer) : ouvre une boite de dialogue de confirmation
-- Ajouter un `AlertDialog` de confirmation de suppression
-- Ajouter la fonction `handleDelete` qui appelle `supabase.from('commissions').delete().eq('id', id)` puis rafraichit les donnees
-- Ajouter un state `editingCommission` pour le mode edition
-- Ne pas permettre la suppression si le statut est "sent" (deja envoye au comptable)
+- Ajouter un champ `partOfDay` au state `formData` (valeur par defaut : `'full_day'`)
+- Ajouter un selecteur "Duree" dans le formulaire de creation avec les options :
+  - Journee complete
+  - Matin
+  - Apres-midi
+- Envoyer `part_of_day` dans l'insertion Supabase
+- Utiliser la vraie valeur de `part_of_day` (au lieu du `'full_day'` en dur) dans :
+  - `LeaveEstimation` (ligne 475)
+  - `handleApprove` pour le calcul `calculateWorkingDays` (ligne 236-240)
+- Afficher la duree dans le tableau des demandes (ex: afficher "½ journee (matin)" a cote des dates)
+
+### 3. Fichier : `src/components/time-off/TimeOffEditDialog.tsx`
+
+- Ajouter le champ `part_of_day` dans le formulaire d'edition
+- Charger la valeur existante depuis la demande
+- Envoyer la mise a jour vers Supabase
+
+### 4. Affichage dans le tableau
+
+Dans les colonnes du tableau des demandes, afficher l'indication de demi-journee quand applicable :
+- "01/02 - 01/02 (Matin)" pour une demi-journee matin
+- "01/02 - 03/02" pour une journee complete sur plusieurs jours
 
 ---
 
 ## Details techniques
 
-### Props ajoutees au dialogue
+### Logique de demi-journee
 
-```typescript
-interface AddCommissionDialogProps {
-  // ...existant
-  editCommission?: {
-    id: string;
-    employee_id: string;
-    month: number;
-    year: number;
-    amount: number;
-    description: string | null;
-    base_amount?: number;
-    commission_rate_used?: number;
-  } | null;
-}
-```
+La logique existe deja dans `calculateWorkingDays` (fichier `src/lib/leave-calculator.ts`) :
+- Si `partOfDay` est `'morning'` ou `'afternoon'` et une seule journee : compte 0.5 jour
+- Si plusieurs jours : soustrait 0.5 du total
 
-### Logique de suppression
+Le selecteur sera conditionne : quand les dates de debut et fin sont identiques, les 3 options sont proposees. Quand les dates sont differentes, seule "Journee complete" est disponible (la demi-journee n'a de sens que sur un seul jour).
 
-```typescript
-const handleDelete = async (id: string) => {
-  const { error } = await supabase
-    .from('commissions')
-    .delete()
-    .eq('id', id);
-  
-  if (error) toast.error('Erreur lors de la suppression');
-  else { toast.success('Commission supprimee'); fetchData(); }
-};
-```
+### Impact sur l'approbation
 
-### Boutons d'action dans le tableau
-
-Chaque ligne aura un menu d'actions avec :
-- "Modifier" (icone Pencil)
-- "Supprimer" (icone Trash2, avec confirmation)
-
-Les commissions deja envoyees ("sent") afficheront les boutons desactives ou masques pour eviter toute modification accidentelle.
-
----
-
-## Resultat attendu
-
-- Chaque ligne du tableau affiche des boutons d'action
-- Cliquer sur "Modifier" ouvre le dialogue pre-rempli
-- Cliquer sur "Supprimer" affiche une confirmation avant suppression
-- Les commissions envoyees ne peuvent pas etre modifiees ou supprimees
+Quand un manager approuve une demande, le calcul des jours debites du solde utilisera la vraie valeur `part_of_day` au lieu du `'full_day'` actuellement en dur.
 
