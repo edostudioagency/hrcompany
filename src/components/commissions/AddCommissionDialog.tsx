@@ -40,12 +40,24 @@ interface Employee {
   salary_type: string | null;
 }
 
+interface EditCommission {
+  id: string;
+  employee_id: string;
+  month: number;
+  year: number;
+  amount: number;
+  description: string | null;
+  base_amount?: number | null;
+  commission_rate_used?: number | null;
+}
+
 interface AddCommissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employees: Employee[];
   sortOrder?: EmployeeSortOrder;
   onSuccess: () => void;
+  editCommission?: EditCommission | null;
 }
 
 const MONTHS = [
@@ -69,7 +81,9 @@ export function AddCommissionDialog({
   employees,
   sortOrder = 'first_name',
   onSuccess,
+  editCommission,
 }: AddCommissionDialogProps) {
+  const isEditMode = !!editCommission;
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -87,6 +101,23 @@ export function AddCommissionDialog({
   });
 
   const [isManualAmount, setIsManualAmount] = useState(false);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editCommission && open) {
+      setFormData({
+        employee_id: editCommission.employee_id,
+        month: editCommission.month,
+        year: editCommission.year,
+        base_amount: editCommission.base_amount != null ? String(editCommission.base_amount) : '',
+        amount: String(editCommission.amount),
+        description: editCommission.description || '',
+      });
+      setIsManualAmount(!editCommission.base_amount);
+    } else if (!open) {
+      resetForm();
+    }
+  }, [editCommission, open]);
 
   // Fetch commission config when employee changes
   useEffect(() => {
@@ -182,9 +213,19 @@ export function AddCommissionDialog({
           : Number(commissionConfig.commission_rate) || 0;
       }
 
-      const { error } = await supabase.from('commissions').upsert(payload, {
-        onConflict: 'employee_id,month,year',
-      });
+      let error;
+      if (isEditMode && editCommission) {
+        const { error: updateError } = await supabase
+          .from('commissions')
+          .update(payload)
+          .eq('id', editCommission.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from('commissions').upsert(payload, {
+          onConflict: 'employee_id,month,year',
+        });
+        error = insertError;
+      }
 
       if (error) throw error;
 
@@ -220,8 +261,8 @@ export function AddCommissionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Ajouter une commission</DialogTitle>
-          <DialogDescription>Enregistrez une commission pour un employé</DialogDescription>
+          <DialogTitle>{isEditMode ? 'Modifier une commission' : 'Ajouter une commission'}</DialogTitle>
+          <DialogDescription>{isEditMode ? 'Modifiez les détails de la commission' : 'Enregistrez une commission pour un employé'}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {/* Employee Selection */}
@@ -230,6 +271,7 @@ export function AddCommissionDialog({
             <Select
               value={formData.employee_id}
               onValueChange={(value) => setFormData({ ...formData, employee_id: value })}
+              disabled={isEditMode}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un employé" />
