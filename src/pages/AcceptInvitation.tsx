@@ -68,8 +68,9 @@ export default function AcceptInvitation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 8) {
-      toast.error('Le mot de passe doit contenir au moins 8 caractères');
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{10,}$/;
+    if (!passwordRegex.test(password)) {
+      toast.error('Le mot de passe doit contenir au moins 10 caractères, incluant majuscules, minuscules, chiffres et caractères spéciaux');
       return;
     }
 
@@ -283,7 +284,7 @@ export default function AcceptInvitation() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 6 caractères"
+                  placeholder="Min. 10 caractères, majuscule, minuscule, chiffre, spécial"
                   required
                 />
               </div>

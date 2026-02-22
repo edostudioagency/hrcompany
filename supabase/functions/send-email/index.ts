@@ -312,10 +312,8 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: unknown) {
     console.error("Error in send-email function:", error);
     
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "Une erreur s'est produite lors de l'envoi de l'email. Veuillez réessayer." }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

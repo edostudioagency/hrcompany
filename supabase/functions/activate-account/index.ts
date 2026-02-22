@@ -30,9 +30,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (password.length < 8) {
+    // Password complexity: min 10 chars, uppercase, lowercase, digit, special char
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{10,}$/;
+    if (!passwordRegex.test(password)) {
       return new Response(
-        JSON.stringify({ error: "Le mot de passe doit contenir au moins 8 caractères" }),
+        JSON.stringify({ error: "Le mot de passe doit contenir au moins 10 caractères, incluant majuscules, minuscules, chiffres et caractères spéciaux" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -60,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!invitation) {
-      console.log("No invitation found with token:", token);
+      console.log("No invitation found for provided token");
       return new Response(
         JSON.stringify({ error: "Invitation invalide ou expirée" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -69,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Check if invitation has expired
     if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
-      console.log("Invitation expired:", token);
+      console.log("Invitation expired");
       return new Response(
         JSON.stringify({ error: "Cette invitation a expiré" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -173,7 +175,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in activate-account function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Une erreur s'est produite. Veuillez réessayer." }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
