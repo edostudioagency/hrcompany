@@ -30,9 +30,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return new Response(
-        JSON.stringify({ error: "Le mot de passe doit contenir au moins 6 caractères" }),
+        JSON.stringify({ error: "Le mot de passe doit contenir au moins 8 caractères" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
