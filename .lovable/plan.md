@@ -1,69 +1,85 @@
 
-# Plan: Amélioration des cartes du tableau de bord
 
-## Résumé
+# Plan : Modifier et supprimer des commissions
 
-Masquer la carte "Échanges en attente" si les échanges sont désactivés, et améliorer la clarté de la carte "Shifts cette semaine".
+## Resume
+
+Ajouter des boutons d'action (modifier / supprimer) sur chaque ligne du tableau des commissions, avec une boite de dialogue de confirmation pour la suppression et la reutilisation du dialogue existant en mode edition.
 
 ---
 
 ## Modifications
 
-### Fichier: `src/pages/Dashboard.tsx`
+### 1. Fichier : `src/components/commissions/AddCommissionDialog.tsx`
 
-#### 1. Récupérer les paramètres de l'entreprise
+Transformer le dialogue pour supporter le mode edition :
 
-Ajouter `companySettings` depuis le contexte :
+- Ajouter une prop optionnelle `editCommission` contenant les donnees de la commission a modifier
+- Changer le titre du dialogue dynamiquement ("Ajouter" vs "Modifier")
+- Pre-remplir le formulaire avec les donnees existantes en mode edition
+- En mode edition, utiliser `update` au lieu de `upsert` (mise a jour par `id`)
+- Desactiver le changement d'employe en mode edition
 
-```typescript
-const { currentCompany, companySettings } = useCompany();
-```
+### 2. Fichier : `src/pages/Commissions.tsx`
 
-#### 2. Masquer la carte "Échanges en attente" si désactivés
-
-Actuellement (ligne 249-255) :
-```typescript
-{isManagerOrAdmin && (
-  <>
-    <StatCard title="Demandes en attente" ... />
-    <StatCard title="Échanges en attente" ... />
-  </>
-)}
-```
-
-Après modification :
-```typescript
-{isManagerOrAdmin && (
-  <>
-    <StatCard title="Demandes en attente" ... />
-    {companySettings?.allow_shift_swaps && (
-      <StatCard title="Échanges en attente" ... />
-    )}
-  </>
-)}
-```
-
-#### 3. Améliorer la clarté de la carte "Shifts"
-
-Modifier le libellé de la carte pour être plus explicite :
-
-| Avant | Après |
-|-------|-------|
-| Titre: "Shifts cette semaine" | Titre: "Créneaux planifiés" |
-| Sous-titre: "Planifiés" | Sous-titre: "Cette semaine" |
-
-Cela rend plus clair que la carte affiche le nombre de créneaux de travail (shifts) personnalisés créés dans le planning pour la semaine en cours.
+- Ajouter une colonne "Actions" au tableau avec deux boutons :
+  - Bouton crayon (Modifier) : ouvre le dialogue en mode edition avec les donnees de la commission
+  - Bouton poubelle (Supprimer) : ouvre une boite de dialogue de confirmation
+- Ajouter un `AlertDialog` de confirmation de suppression
+- Ajouter la fonction `handleDelete` qui appelle `supabase.from('commissions').delete().eq('id', id)` puis rafraichit les donnees
+- Ajouter un state `editingCommission` pour le mode edition
+- Ne pas permettre la suppression si le statut est "sent" (deja envoye au comptable)
 
 ---
 
-## Résultat attendu
+## Details techniques
 
-- La carte "Échanges en attente" sera masquée si `allow_shift_swaps` est désactivé dans les paramètres de l'entreprise
-- La carte des shifts aura un libellé plus explicite pour les utilisateurs
-- Le comportement sera cohérent avec la sidebar qui cache déjà l'onglet "Échanges" quand la fonctionnalité est désactivée
+### Props ajoutees au dialogue
+
+```typescript
+interface AddCommissionDialogProps {
+  // ...existant
+  editCommission?: {
+    id: string;
+    employee_id: string;
+    month: number;
+    year: number;
+    amount: number;
+    description: string | null;
+    base_amount?: number;
+    commission_rate_used?: number;
+  } | null;
+}
+```
+
+### Logique de suppression
+
+```typescript
+const handleDelete = async (id: string) => {
+  const { error } = await supabase
+    .from('commissions')
+    .delete()
+    .eq('id', id);
+  
+  if (error) toast.error('Erreur lors de la suppression');
+  else { toast.success('Commission supprimee'); fetchData(); }
+};
+```
+
+### Boutons d'action dans le tableau
+
+Chaque ligne aura un menu d'actions avec :
+- "Modifier" (icone Pencil)
+- "Supprimer" (icone Trash2, avec confirmation)
+
+Les commissions deja envoyees ("sent") afficheront les boutons desactives ou masques pour eviter toute modification accidentelle.
 
 ---
 
-## Note explicative
+## Resultat attendu
 
-La carte "Shifts cette semaine" (renommée "Créneaux planifiés") compte le nombre de créneaux de travail personnalisés que vous avez créés dans la page Planning pour la semaine en cours. Si vous n'utilisez pas cette fonctionnalité (vous gérez les présences uniquement via les horaires par défaut des employés), cette carte affichera toujours 0.
+- Chaque ligne du tableau affiche des boutons d'action
+- Cliquer sur "Modifier" ouvre le dialogue pre-rempli
+- Cliquer sur "Supprimer" affiche une confirmation avant suppression
+- Les commissions envoyees ne peuvent pas etre modifiees ou supprimees
+
