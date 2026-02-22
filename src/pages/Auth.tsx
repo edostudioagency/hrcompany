@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const emailSchema = z.string().trim().email({ message: "Email invalide" });
-const passwordSchema = z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" });
+const passwordSchema = z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" });
 
 export default function Auth() {
   const [email, setEmail] = useState('');

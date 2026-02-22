@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Loader2, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { z } from 'zod';
 
-const passwordSchema = z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" });
+const passwordSchema = z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" });
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
