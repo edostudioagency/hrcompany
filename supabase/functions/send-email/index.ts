@@ -29,6 +29,15 @@ interface EmailRequest {
 const VALID_EMAIL_TYPES = ["invitation", "schedule_change", "time_off", "shift_swap", "commissions"];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const escapeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+};
+
 const getEmailContent = (type: string, recipientName: string, data: Record<string, unknown>) => {
   const baseUrl = Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com";
   
@@ -39,10 +48,10 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Bienvenue sur HR Manager!</h1>
-            <p>Bonjour ${recipientName},</p>
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
             <p>Vous avez été invité(e) à rejoindre l'équipe sur HR Manager.</p>
             <p>Cliquez sur le lien ci-dessous pour créer votre compte :</p>
-            <a href="${baseUrl}/accept-invitation?token=${data.invitationToken}" 
+            <a href="${baseUrl}/accept-invitation?token=${encodeURIComponent(String(data.invitationToken || ''))}" 
                style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 8px; margin: 16px 0;">
               Créer mon compte
@@ -60,10 +69,10 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Votre planning a été modifié</h1>
-            <p>Bonjour ${recipientName},</p>
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
             <p>Votre planning de travail a été mis à jour.</p>
             <p><strong>Détails :</strong></p>
-            <p>${data.details || "Consultez l'application pour voir les changements."}</p>
+            <p>${escapeHtml(String(data.details || "Consultez l'application pour voir les changements."))}</p>
             <a href="${baseUrl}/shifts" 
                style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 8px; margin: 16px 0;">
@@ -80,9 +89,9 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Demande de congé ${timeOffStatus}</h1>
-            <p>Bonjour ${recipientName},</p>
-            <p>Votre demande de congé du ${data.startDate} au ${data.endDate} a été <strong>${timeOffStatus}</strong>.</p>
-            ${data.reason ? `<p><strong>Commentaire :</strong> ${data.reason}</p>` : ""}
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
+            <p>Votre demande de congé du ${escapeHtml(String(data.startDate))} au ${escapeHtml(String(data.endDate))} a été <strong>${timeOffStatus}</strong>.</p>
+            ${data.reason ? `<p><strong>Commentaire :</strong> ${escapeHtml(String(data.reason))}</p>` : ""}
             <a href="${baseUrl}/time-off" 
                style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 8px; margin: 16px 0;">
@@ -97,7 +106,7 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
       let swapMessage = "";
       
       if (swapAction === "request") {
-        swapMessage = `${data.requesterName} souhaite échanger son shift du ${data.originalDate} avec votre shift du ${data.swapDate}.`;
+        swapMessage = `${escapeHtml(String(data.requesterName))} souhaite échanger son shift du ${escapeHtml(String(data.originalDate))} avec votre shift du ${escapeHtml(String(data.swapDate))}.`;
       } else if (swapAction === "approved") {
         swapMessage = `Votre demande d'échange a été approuvée.`;
       } else if (swapAction === "rejected") {
@@ -109,7 +118,7 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Échange de shift</h1>
-            <p>Bonjour ${recipientName},</p>
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
             <p>${swapMessage}</p>
             <a href="${baseUrl}/swaps" 
                style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; 
@@ -131,10 +140,10 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Commissions du mois</h1>
-            <p>Bonjour ${recipientName},</p>
-            <p>Voici le récapitulatif des commissions pour <strong>${commissionsMonth} ${commissionsYear}</strong> :</p>
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
+            <p>Voici le récapitulatif des commissions pour <strong>${escapeHtml(commissionsMonth)} ${commissionsYear}</strong> :</p>
             <div style="background-color: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
-              <pre style="white-space: pre-wrap; font-family: monospace; margin: 0;">${commissionsData}</pre>
+              <pre style="white-space: pre-wrap; font-family: monospace; margin: 0;">${escapeHtml(commissionsData)}</pre>
             </div>
             <p style="font-size: 18px; font-weight: bold; color: #6366f1;">
               Total : ${commissionsTotal.toFixed(2)} €
@@ -153,7 +162,7 @@ const getEmailContent = (type: string, recipientName: string, data: Record<strin
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a2e;">Notification</h1>
-            <p>Bonjour ${recipientName},</p>
+            <p>Bonjour ${escapeHtml(recipientName)},</p>
             <p>Vous avez une nouvelle notification sur HR Manager.</p>
           </div>
         `,
