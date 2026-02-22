@@ -20,7 +20,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Euro, TrendingUp, Users } from 'lucide-react';
+import { Loader2, Plus, Euro, TrendingUp, Users, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -87,6 +97,8 @@ export default function CommissionsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCommission, setEditingCommission] = useState<Commission | null>(null);
+  const [deletingCommissionId, setDeletingCommissionId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -141,6 +153,30 @@ export default function CommissionsPage() {
 
   const handleDialogSuccess = () => {
     fetchData();
+    setEditingCommission(null);
+  };
+
+  const handleEdit = (commission: Commission) => {
+    setEditingCommission(commission);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingCommissionId) return;
+    try {
+      const { error } = await supabase
+        .from('commissions')
+        .delete()
+        .eq('id', deletingCommissionId);
+      if (error) throw error;
+      toast.success('Commission supprimée');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting commission:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setDeletingCommissionId(null);
+    }
   };
 
   const filteredCommissions = commissions.filter(
@@ -259,7 +295,7 @@ export default function CommissionsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => { setEditingCommission(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Ajouter une commission
           </Button>
@@ -284,12 +320,13 @@ export default function CommissionsPage() {
                   <TableHead>Description</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCommissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Aucune commission pour cette période
                     </TableCell>
                   </TableRow>
@@ -323,6 +360,30 @@ export default function CommissionsPage() {
                       <TableCell className="text-muted-foreground">
                         {format(new Date(commission.created_at), 'dd/MM/yyyy', { locale: fr })}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={commission.status === 'sent'}
+                            onClick={() => handleEdit(commission)}
+                            title="Modifier"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            disabled={commission.status === 'sent'}
+                            onClick={() => setDeletingCommissionId(commission.id)}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -332,13 +393,32 @@ export default function CommissionsPage() {
         </Card>
       </div>
 
-      {/* Add Commission Dialog */}
+      {/* Add/Edit Commission Dialog */}
       <AddCommissionDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingCommission(null); }}
         employees={employees}
         onSuccess={handleDialogSuccess}
+        editCommission={editingCommission}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingCommissionId} onOpenChange={(open) => { if (!open) setDeletingCommissionId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette commission ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. La commission sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
