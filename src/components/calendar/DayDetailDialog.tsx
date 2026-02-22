@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, MapPin, Calendar } from "lucide-react";
+import { formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -43,6 +44,7 @@ interface DayDetailDialogProps {
   shifts: Shift[];
   timeOffs: TimeOff[];
   employees: Employee[];
+  sortOrder?: EmployeeSortOrder;
   getTimeOffLabel: (type: string) => string;
   onShiftClick?: (shift: Shift, employee: Employee) => void;
   onTimeOffClick?: (timeOff: TimeOff, employee: Employee) => void;
@@ -55,6 +57,7 @@ export function DayDetailDialog({
   shifts,
   timeOffs,
   employees,
+  sortOrder = 'first_name',
   getTimeOffLabel,
   onShiftClick,
   onTimeOffClick,
@@ -108,13 +111,12 @@ export function DayDetailDialog({
                       <Avatar className="w-10 h-10 ring-2 ring-blue-500">
                         <AvatarImage src={employee.avatar_url || undefined} />
                         <AvatarFallback className="bg-blue-100 text-blue-700 font-medium">
-                          {employee.first_name?.[0]}
-                          {employee.last_name?.[0]}
+                          {getEmployeeInitials(employee.first_name, employee.last_name, sortOrder)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
-                          {employee.first_name} {employee.last_name}
+                          {formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}
                         </p>
                         {employee.position && (
                           <p className="text-xs text-muted-foreground truncate">
@@ -168,13 +170,12 @@ export function DayDetailDialog({
                       <Avatar className="w-10 h-10 ring-2 ring-red-500">
                         <AvatarImage src={employee.avatar_url || undefined} />
                         <AvatarFallback className="bg-red-100 text-red-700 font-medium">
-                          {employee.first_name?.[0]}
-                          {employee.last_name?.[0]}
+                          {getEmployeeInitials(employee.first_name, employee.last_name, sortOrder)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
-                          {employee.first_name} {employee.last_name}
+                          {formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}
                         </p>
                         {employee.position && (
                           <p className="text-xs text-muted-foreground truncate">

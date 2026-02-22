@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Calculator, Info, AlertCircle } from 'lucide-react';
-import { sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
+import { sortEmployees, formatEmployeeName, type EmployeeSortOrder } from '@/lib/utils';
 import {
   CommissionType,
   EmployeeCommissionConfig,
@@ -238,7 +238,7 @@ export function AddCommissionDialog({
                 {sortEmployees(employees, sortOrder || 'first_name')
                   .map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name}
+                      {formatEmployeeName(emp.first_name, emp.last_name, sortOrder)}
                       {emp.salary_type === 'commission' && (
                         <span className="ml-2 text-xs text-muted-foreground">(avec commission)</span>
                       )}
@@ -261,7 +261,7 @@ export function AddCommissionDialog({
                 <Alert className="border-primary/30 bg-primary/5">
                   <Calculator className="h-4 w-4 text-primary" />
                   <AlertTitle className="text-sm font-medium">
-                    Configuration de {selectedEmployee?.first_name} {selectedEmployee?.last_name}
+                    Configuration de {selectedEmployee ? formatEmployeeName(selectedEmployee.first_name, selectedEmployee.last_name, sortOrder) : ''}
                   </AlertTitle>
                   <AlertDescription className="text-sm mt-2 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">

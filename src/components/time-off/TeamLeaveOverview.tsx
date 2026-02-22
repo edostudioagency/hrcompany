@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Users, Calendar, Briefcase, HeartPulse, Clock, Eye } from 'lucide-react';
-import { cn, sortEmployees } from '@/lib/utils';
+import { cn, sortEmployees, formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from '@/lib/utils';
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-calculator';
 import { EmployeeLeaveHistory } from './EmployeeLeaveHistory';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -69,12 +69,14 @@ function BalanceGauge({ balance }: { balance: LeaveBalance }) {
 
 function EmployeeCard({ 
   employee, 
-  onViewHistory 
+  onViewHistory,
+  sortOrder = 'first_name',
 }: { 
   employee: EmployeeWithBalances;
   onViewHistory: (employee: EmployeeWithBalances) => void;
+  sortOrder?: EmployeeSortOrder;
 }) {
-  const initials = `${employee.first_name[0]}${employee.last_name[0]}`.toUpperCase();
+  const initials = getEmployeeInitials(employee.first_name, employee.last_name, sortOrder).toUpperCase();
   
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -87,7 +89,7 @@ function EmployeeCard({
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <h4 className="font-medium text-sm truncate">
-                  {employee.first_name} {employee.last_name}
+                  {formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}
                 </h4>
                 <p className="text-xs text-muted-foreground truncate">
                   {employee.position || 'Non défini'}
@@ -269,6 +271,7 @@ export function TeamLeaveOverview() {
                 key={employee.id} 
                 employee={employee}
                 onViewHistory={setSelectedEmployee}
+                sortOrder={sortOrder}
               />
             ))}
           </div>

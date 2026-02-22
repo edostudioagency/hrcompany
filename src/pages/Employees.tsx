@@ -53,7 +53,7 @@ import { EmployeeScheduleDialog } from '@/components/employees/EmployeeScheduleD
 import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialog';
 import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
 import { useCompany } from '@/contexts/CompanyContext';
-import { sortEmployees } from '@/lib/utils';
+import { sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 
 interface EmployeeInvitation {
   invitation_token: string;
@@ -460,13 +460,13 @@ export default function EmployeesPage() {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                              <AvatarImage src={employee.avatar_url || undefined} alt={`${employee.first_name} ${employee.last_name}`} />
+                              <AvatarImage src={employee.avatar_url || undefined} alt={formatEmployeeName(employee.first_name, employee.last_name, companySettings?.employee_sort_order || 'first_name')} />
                               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                {employee.first_name[0]}{employee.last_name[0]}
+                                {getEmployeeInitials(employee.first_name, employee.last_name, companySettings?.employee_sort_order || 'first_name')}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{employee.first_name} {employee.last_name}</p>
+                              <p className="font-medium">{formatEmployeeName(employee.first_name, employee.last_name, companySettings?.employee_sort_order || 'first_name')}</p>
                               {employee.phone && (
                                 <p className="text-xs text-muted-foreground">{employee.phone}</p>
                               )}

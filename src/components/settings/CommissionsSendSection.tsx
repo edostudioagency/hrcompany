@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { Loader2, Send, FileText, Euro, CalendarClock, Info } from 'lucide-react';
+import { formatEmployeeName } from '@/lib/utils';
 
 interface Commission {
   id: string;
@@ -49,7 +50,7 @@ export function CommissionsSendSection({
   sendMode, 
   notificationDays 
 }: CommissionsSendSectionProps) {
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [commissions, setCommissions] = useState<Commission[]>([]);
@@ -116,7 +117,7 @@ export function CommissionsSendSection({
     setSending(true);
     try {
       const commissionsList = pendingCommissions
-        .map(c => `${c.employee?.first_name} ${c.employee?.last_name}: ${Number(c.amount).toFixed(2)}€`)
+        .map(c => `${c.employee ? formatEmployeeName(c.employee.first_name, c.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}: ${Number(c.amount).toFixed(2)}€`)
         .join('\n');
 
       const { error } = await supabase.functions.invoke('send-email', {

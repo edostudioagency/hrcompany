@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCompany } from '@/contexts/CompanyContext';
 import { AddCommissionDialog } from '@/components/commissions/AddCommissionDialog';
+import { formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 
 interface Commission {
   id: string;
@@ -81,7 +82,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function CommissionsPage() {
-  const { currentCompany } = useCompany();
+  const { currentCompany, companySettings } = useCompany();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,13 +300,12 @@ export default function CommissionsPage() {
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                             <span className="text-sm font-medium text-primary">
-                              {commission.employee?.first_name[0]}
-                              {commission.employee?.last_name[0]}
+                              {commission.employee ? getEmployeeInitials(commission.employee.first_name, commission.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                             </span>
                           </div>
                           <div>
                             <p className="font-medium">
-                              {commission.employee?.first_name} {commission.employee?.last_name}
+                              {commission.employee ? formatEmployeeName(commission.employee.first_name, commission.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {commission.employee?.email}

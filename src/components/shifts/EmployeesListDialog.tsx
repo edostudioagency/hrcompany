@@ -7,7 +7,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { sortEmployees, type EmployeeSortOrder } from '@/lib/utils';
+import { sortEmployees, formatEmployeeName, getEmployeeInitials, type EmployeeSortOrder } from '@/lib/utils';
 
 interface Employee {
   id: string;
@@ -53,13 +53,12 @@ export function EmployeesListDialog({
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={employee.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary">
-                    {employee.first_name[0]}
-                    {employee.last_name[0]}
+                    {getEmployeeInitials(employee.first_name, employee.last_name, sortOrder)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <p className="font-medium">
-                    {employee.first_name} {employee.last_name}
+                    {formatEmployeeName(employee.first_name, employee.last_name, sortOrder)}
                   </p>
                   {employee.position && (
                     <p className="text-sm text-muted-foreground">{employee.position}</p>

@@ -41,7 +41,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CalendarIcon, Check, X, Loader2 } from 'lucide-react';
-import { cn, sortEmployees } from '@/lib/utils';
+import { cn, sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 import { TimeOffEditDialog } from '@/components/time-off/TimeOffEditDialog';
 import { LeaveBalanceCard } from '@/components/time-off/LeaveBalanceCard';
 import { LeaveEstimation } from '@/components/time-off/LeaveEstimation';
@@ -381,7 +381,7 @@ const TimeOff = () => {
                           {sortEmployees(employees, companySettings?.employee_sort_order || 'first_name')
                             .map((emp) => (
                               <SelectItem key={emp.id} value={emp.id}>
-                                {emp.first_name} {emp.last_name}
+                                {formatEmployeeName(emp.first_name, emp.last_name, companySettings?.employee_sort_order || 'first_name')}
                               </SelectItem>
                             ))}
                         </SelectContent>
@@ -525,14 +525,14 @@ const TimeOff = () => {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={`${request.employee?.first_name} ${request.employee?.last_name}`} />
+                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={request.employee ? formatEmployeeName(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''} />
                                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                                    {request.employee?.first_name?.[0]}{request.employee?.last_name?.[0]}
+                                    {request.employee ? getEmployeeInitials(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <p className="font-medium">
-                                    {request.employee?.first_name} {request.employee?.last_name}
+                                    {request.employee ? formatEmployeeName(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                   </p>
                                   <p className="text-xs text-muted-foreground">{request.employee?.email}</p>
                                 </div>
@@ -617,13 +617,13 @@ const TimeOff = () => {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={`${request.employee?.first_name} ${request.employee?.last_name}`} />
+                                  <AvatarImage src={request.employee?.avatar_url || undefined} alt={request.employee ? formatEmployeeName(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''} />
                                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                                    {request.employee?.first_name?.[0]}{request.employee?.last_name?.[0]}
+                                    {request.employee ? getEmployeeInitials(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium">{request.employee?.first_name} {request.employee?.last_name}</p>
+                                  <p className="font-medium">{request.employee ? formatEmployeeName(request.employee.first_name, request.employee.last_name, companySettings?.employee_sort_order || 'first_name') : ''}</p>
                                 </div>
                               </div>
                             </TableCell>

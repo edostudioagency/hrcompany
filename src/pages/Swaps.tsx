@@ -40,7 +40,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CalendarIcon, Check, X, Loader2, ArrowRightLeft } from 'lucide-react';
-import { cn, sortEmployees } from '@/lib/utils';
+import { cn, sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 
 interface ShiftSwapRequest {
   id: string;
@@ -327,7 +327,7 @@ const Swaps = () => {
                         {sortEmployees(otherEmployees, companySettings?.employee_sort_order || 'first_name')
                           .map((emp) => (
                             <SelectItem key={emp.id} value={emp.id}>
-                              {emp.first_name} {emp.last_name}
+                              {formatEmployeeName(emp.first_name, emp.last_name, companySettings?.employee_sort_order || 'first_name')}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -443,12 +443,12 @@ const Swaps = () => {
                               <TableCell>
                                 <div>
                                   <p className="font-medium">
-                                    {request.requester?.first_name} {request.requester?.last_name}
+                                    {request.requester ? formatEmployeeName(request.requester.first_name, request.requester.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                   </p>
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {request.target?.first_name} {request.target?.last_name}
+                                {request.target ? formatEmployeeName(request.target.first_name, request.target.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -519,16 +519,16 @@ const Swaps = () => {
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                                   <span className="text-xs font-medium text-primary">
-                                    {request.requester?.first_name?.[0]}{request.requester?.last_name?.[0]}
+                                    {request.requester ? getEmployeeInitials(request.requester.first_name, request.requester.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                   </span>
                                 </div>
                                 <p className="font-medium">
-                                  {request.requester?.first_name} {request.requester?.last_name}
+                                  {request.requester ? formatEmployeeName(request.requester.first_name, request.requester.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell>
-                              {request.target?.first_name} {request.target?.last_name}
+                              {request.target ? formatEmployeeName(request.target.first_name, request.target.last_name, companySettings?.employee_sort_order || 'first_name') : ''}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
