@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const allowedOrigins = [
-  Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com",
+  Deno.env.get("SITE_URL") || "",
   "https://bsdccrcdfunhoempbzdl.supabase.co",
 ];
 
@@ -79,6 +80,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("User role verified:", roleData.role);
 
+    // Rate limiting: 5 reset requests per hour per user
+    const rateLimitResult = checkRateLimit(`reset-password:${user.id}`, {
+      windowMs: 3_600_000,
+      maxRequests: 5,
+    });
+
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Trop de demandes de réinitialisation. Veuillez réessayer plus tard." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json", ...corsHeaders, ...getRateLimitHeaders(rateLimitResult.retryAfterMs) },
+        }
+      );
+    }
+
     const { employeeId, employeeEmail, employeeName }: ResetPasswordRequest = await req.json();
 
     if (!employeeId || !employeeEmail) {
@@ -112,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate password reset link
     const baseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const siteUrl = req.headers.get("origin") || "https://hrcompany.lovable.app";
+    const siteUrl = req.headers.get("origin") || Deno.env.get("SITE_URL") || "";
     
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",

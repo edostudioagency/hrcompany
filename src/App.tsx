@@ -7,6 +7,8 @@ import { AppProvider } from "@/contexts/AppContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { toast } from "sonner";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -25,12 +27,38 @@ import Unauthorized from "./pages/Unauthorized";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on 401/403 errors
+        if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : "Une erreur est survenue";
+        toast.error(message);
+      },
+    },
+  },
+});
+
+function SessionManager({ children }: { children: React.ReactNode }) {
+  useSessionTimeout();
+  return <>{children}</>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <SessionManager>
         <CompanyProvider>
           <AppProvider>
             <Toaster />
@@ -104,6 +132,7 @@ const App = () => (
             </BrowserRouter>
           </AppProvider>
         </CompanyProvider>
+        </SessionManager>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

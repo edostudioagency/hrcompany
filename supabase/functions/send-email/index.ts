@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 // Allowed origins for CORS
 const allowedOrigins = [
-  Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com",
+  Deno.env.get("SITE_URL") || "",
   "https://bsdccrcdfunhoempbzdl.supabase.co",
 ];
 
@@ -39,7 +40,7 @@ const escapeHtml = (str: string): string => {
 };
 
 const getEmailContent = (type: string, recipientName: string, data: Record<string, unknown>) => {
-  const baseUrl = Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com";
+  const baseUrl = Deno.env.get("SITE_URL") || "";
   
   switch (type) {
     case "invitation":
@@ -245,6 +246,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("User role verified:", roleData.role);
+
+    // Rate limiting: 10 emails per minute per user
+    const rateLimitResult = checkRateLimit(`send-email:${user.id}`, {
+      windowMs: 60_000,
+      maxRequests: 10,
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.warn("Rate limit exceeded for user:", user.id);
+      return new Response(
+        JSON.stringify({ error: "Trop de requêtes. Veuillez réessayer dans quelques instants." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json", ...corsHeaders, ...getRateLimitHeaders(rateLimitResult.retryAfterMs) },
+        }
+      );
+    }
 
     // Parse and validate request body
     const body = await req.json();
