@@ -47,6 +47,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
 
+type SupabaseError = { message: string; statusCode?: string };
+
 interface Payslip {
   id: string;
   employee_id: string;
@@ -197,7 +199,18 @@ export default function PayslipsPage() {
         .from('payslips')
         .upload(filePath, selectedFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        const errMsg = (uploadError as SupabaseError).message || '';
+        if (errMsg.includes('Bucket not found')) {
+          toast.error("Le bucket de stockage 'payslips' n'existe pas. Contactez l'administrateur.");
+        } else if (errMsg.includes('Policy') || errMsg.includes('permission') || errMsg.includes('security')) {
+          toast.error("Vous n'avez pas les permissions nécessaires pour importer des fichiers.");
+        } else {
+          toast.error(`Erreur lors de l'upload du fichier : ${errMsg}`);
+        }
+        return;
+      }
 
       // Save payslip record
       const { error: dbError } = await supabase.from('payslips').upsert(
@@ -213,7 +226,13 @@ export default function PayslipsPage() {
         }
       );
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        // Cleanup: remove uploaded file if DB insert failed
+        await supabase.storage.from('payslips').remove([filePath]);
+        toast.error(`Erreur lors de l'enregistrement : ${dbError.message}`);
+        return;
+      }
 
       toast.success('Fiche de paie importée avec succès');
       setDialogOpen(false);
@@ -221,7 +240,7 @@ export default function PayslipsPage() {
       fetchData();
     } catch (error) {
       console.error('Error uploading payslip:', error);
-      toast.error("Erreur lors de l'importation");
+      toast.error("Erreur inattendue lors de l'importation. Veuillez réessayer.");
     } finally {
       setUploading(false);
     }
@@ -233,7 +252,11 @@ export default function PayslipsPage() {
         .from('payslips')
         .download(payslip.file_path);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Download error:', error);
+        toast.error(`Erreur lors du téléchargement : ${error.message}`);
+        return;
+      }
 
       // Create download link
       const url = URL.createObjectURL(data);
@@ -246,24 +269,31 @@ export default function PayslipsPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading payslip:', error);
-      toast.error('Erreur lors du téléchargement');
+      toast.error('Erreur inattendue lors du téléchargement');
     }
   };
 
   const handleDelete = async (payslip: Payslip) => {
     try {
-      // Delete from storage
-      await supabase.storage.from('payslips').remove([payslip.file_path]);
-
-      // Delete record
+      // Delete record first (if DB delete fails, don't delete the file)
       const { error } = await supabase.from('payslips').delete().eq('id', payslip.id);
-      if (error) throw error;
+      if (error) {
+        console.error('DB delete error:', error);
+        toast.error(`Erreur lors de la suppression : ${error.message}`);
+        return;
+      }
+
+      // Then delete from storage
+      const { error: storageError } = await supabase.storage.from('payslips').remove([payslip.file_path]);
+      if (storageError) {
+        console.error('Storage delete error (record already removed):', storageError);
+      }
 
       toast.success('Fiche de paie supprimée');
       fetchData();
     } catch (error) {
       console.error('Error deleting payslip:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error('Erreur inattendue lors de la suppression');
     }
   };
 
