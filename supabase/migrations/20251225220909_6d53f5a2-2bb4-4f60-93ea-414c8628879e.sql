@@ -30,7 +30,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -46,7 +46,7 @@ RETURNS app_role
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT role
   FROM public.user_roles
@@ -96,7 +96,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
   -- Insert profile
@@ -128,7 +128,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 -- Trigger for profiles updated_at
 CREATE TRIGGER update_profiles_updated_at

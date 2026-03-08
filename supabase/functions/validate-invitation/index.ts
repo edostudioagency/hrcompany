@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const allowedOrigins = [
-  Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com",
+  Deno.env.get("SITE_URL") || "",
   "https://bsdccrcdfunhoempbzdl.supabase.co",
 ];
 
@@ -29,6 +30,23 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+    // Rate limiting: 5 attempts per minute per IP
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    const rateLimitResult = checkRateLimit(`validate-invitation:${clientIp}`, {
+      windowMs: 60_000,
+      maxRequests: 5,
+    });
+
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Trop de tentatives. Veuillez réessayer dans quelques instants." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json", ...corsHeaders, ...getRateLimitHeaders(rateLimitResult.retryAfterMs) },
+        }
+      );
+    }
 
   try {
     const { token }: ValidateRequest = await req.json();
@@ -107,9 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         id: employee.id,
-        email: employee.email,
         first_name: employee.first_name,
-        last_name: employee.last_name,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

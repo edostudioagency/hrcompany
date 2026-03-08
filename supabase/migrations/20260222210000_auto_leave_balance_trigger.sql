@@ -12,14 +12,14 @@ SECURITY DEFINER
 AS $$
 DECLARE
   total_days NUMERIC := 0;
-  current_date DATE := start_date;
+  cur_date DATE := start_date;
 BEGIN
-  WHILE current_date <= end_date LOOP
+  WHILE cur_date <= end_date LOOP
     -- 0 = Sunday, 6 = Saturday in PostgreSQL extract(dow)
-    IF EXTRACT(DOW FROM current_date) NOT IN (0, 6) THEN
+    IF EXTRACT(DOW FROM cur_date) NOT IN (0, 6) THEN
       total_days := total_days + 1;
     END IF;
-    current_date := current_date + INTERVAL '1 day';
+    cur_date := cur_date + INTERVAL '1 day';
   END LOOP;
   RETURN total_days;
 END;
@@ -54,7 +54,7 @@ CREATE OR REPLACE FUNCTION public.update_leave_balance_on_approval()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   balance_type TEXT;

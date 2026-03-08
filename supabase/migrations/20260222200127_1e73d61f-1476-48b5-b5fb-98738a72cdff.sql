@@ -49,7 +49,7 @@ BEGIN
   );
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Attach triggers to sensitive tables
 CREATE TRIGGER audit_user_roles

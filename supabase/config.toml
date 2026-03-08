@@ -1,7 +1,7 @@
 project_id = "bsdccrcdfunhoempbzdl"
 
 [functions.send-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.validate-invitation]
 verify_jwt = false
@@ -10,4 +10,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.reset-password]
-verify_jwt = false
+verify_jwt = true

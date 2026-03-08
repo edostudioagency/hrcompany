@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION public.ensure_single_default_company()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
     IF NEW.is_default = true THEN

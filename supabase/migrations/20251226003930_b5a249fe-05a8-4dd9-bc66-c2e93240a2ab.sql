@@ -4,7 +4,7 @@ RETURNS uuid
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT company_id
   FROM public.employees

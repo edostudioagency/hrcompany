@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 // Allowed origins for CORS
 const allowedOrigins = [
-  Deno.env.get("SITE_URL") || "https://d75adb96-b288-4d7a-9037-411af3c65085.lovableproject.com",
+  Deno.env.get("SITE_URL") || "",
   "https://bsdccrcdfunhoempbzdl.supabase.co",
 ];
 
@@ -30,6 +31,23 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+    // Rate limiting: 3 attempts per minute per IP
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    const rateLimitResult = checkRateLimit(`activate-account:${clientIp}`, {
+      windowMs: 60_000,
+      maxRequests: 3,
+    });
+
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Trop de tentatives. Veuillez réessayer dans quelques instants." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json", ...corsHeaders, ...getRateLimitHeaders(rateLimitResult.retryAfterMs) },
+        }
+      );
+    }
 
   try {
     const supabaseClient = createClient(

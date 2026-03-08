@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.create_default_leave_balances()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   current_year integer := EXTRACT(YEAR FROM CURRENT_DATE);
