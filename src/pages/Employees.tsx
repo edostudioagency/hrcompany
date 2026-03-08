@@ -54,6 +54,10 @@ import { EmployeeDetailDialog } from '@/components/employees/EmployeeDetailDialo
 import { EmployeeEditDialog } from '@/components/employees/EmployeeEditDialog';
 import { useCompany } from '@/contexts/CompanyContext';
 import { sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const EMPLOYEES_PER_PAGE = 20;
 
 interface EmployeeInvitation {
   invitation_token: string;
@@ -308,6 +312,13 @@ export default function EmployeesPage() {
     companySettings?.employee_sort_order || 'first_name'
   );
 
+  const pagination = usePagination({
+    totalItems: filteredEmployees.length,
+    pageSize: EMPLOYEES_PER_PAGE,
+  });
+
+  const paginatedEmployees = filteredEmployees.slice(pagination.startIndex, pagination.endIndex);
+
   if (!currentCompany) {
     return (
       <MainLayout title="Employés">
@@ -448,14 +459,14 @@ export default function EmployeesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.length === 0 ? (
+                  {paginatedEmployees.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Aucun employé trouvé
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredEmployees.map((employee) => (
+                    paginatedEmployees.map((employee) => (
                       <TableRow key={employee.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -526,6 +537,11 @@ export default function EmployeesPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={pagination.goToPage}
+              />
             )}
           </CardContent>
         </Card>
