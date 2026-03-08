@@ -30,7 +30,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -46,7 +46,7 @@ RETURNS app_role
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT role
   FROM public.user_roles
@@ -96,7 +96,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
   -- Insert profile
@@ -128,7 +128,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 -- Trigger for profiles updated_at
 CREATE TRIGGER update_profiles_updated_at
@@ -593,7 +593,7 @@ RETURNS uuid
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT company_id
   FROM public.employees
@@ -713,7 +713,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = ''
 AS $$
 BEGIN
   -- Insert profile
@@ -755,7 +755,7 @@ CREATE OR REPLACE FUNCTION public.create_default_leave_balances()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   current_year integer := EXTRACT(YEAR FROM CURRENT_DATE);
@@ -910,7 +910,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = ''
 AS $function$
 BEGIN
   -- Insert profile
@@ -957,7 +957,7 @@ CREATE OR REPLACE FUNCTION public.create_default_leave_balances()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path = ''
 AS $function$
 DECLARE
   current_year integer := EXTRACT(YEAR FROM CURRENT_DATE);
@@ -1127,7 +1127,7 @@ CREATE OR REPLACE FUNCTION public.ensure_single_default_company()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
     IF NEW.is_default = true THEN
@@ -1446,7 +1446,7 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -1671,7 +1671,7 @@ BEGIN
   );
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Attach triggers to sensitive tables
 CREATE TRIGGER audit_user_roles
@@ -1757,7 +1757,7 @@ CREATE OR REPLACE FUNCTION public.update_leave_balance_on_approval()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   balance_type TEXT;
@@ -1984,7 +1984,7 @@ CREATE OR REPLACE FUNCTION public.check_time_off_overlap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   overlap_count INTEGER;
@@ -2028,7 +2028,7 @@ CREATE OR REPLACE FUNCTION public.check_shift_overlap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   overlap_count INTEGER;
@@ -2080,7 +2080,7 @@ CREATE OR REPLACE FUNCTION public.check_shift_during_leave()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   leave_count INTEGER;

@@ -54,7 +54,7 @@ CREATE OR REPLACE FUNCTION public.update_leave_balance_on_approval()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   balance_type TEXT;

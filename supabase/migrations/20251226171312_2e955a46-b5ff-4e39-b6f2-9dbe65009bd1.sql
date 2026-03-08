@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = ''
 AS $$
 BEGIN
   -- Insert profile

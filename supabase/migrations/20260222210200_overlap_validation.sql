@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.check_time_off_overlap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   overlap_count INTEGER;
@@ -55,7 +55,7 @@ CREATE OR REPLACE FUNCTION public.check_shift_overlap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   overlap_count INTEGER;
@@ -107,7 +107,7 @@ CREATE OR REPLACE FUNCTION public.check_shift_during_leave()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   leave_count INTEGER;
