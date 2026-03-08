@@ -26,13 +26,13 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface TimeOffRequest {
+export interface TimeOffRequest {
   id: string;
   employee_id: string;
   start_date: string;
   end_date: string;
   type: string;
-  reason: string | null;
+  reason?: string | null;
   status: string;
   part_of_day?: string;
   employee?: {
@@ -77,7 +77,7 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
       setType(request.type);
       setStartDate(parseISO(request.start_date));
       setEndDate(parseISO(request.end_date));
-      setPartOfDay((request as any).part_of_day || 'full_day');
+      setPartOfDay(request.part_of_day || 'full_day');
       setReason(request.reason || '');
     }
   }, [request]);
@@ -105,7 +105,7 @@ export function TimeOffEditDialog({ open, onClose, request, onUpdate }: TimeOffE
           end_date: format(endDate, 'yyyy-MM-dd'),
           part_of_day: isSingleDay ? partOfDay : 'full_day',
           reason: reason || null,
-        } as any)
+        })
         .eq('id', request.id);
 
       if (error) throw error;

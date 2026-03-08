@@ -36,6 +36,10 @@ import { fr } from 'date-fns/locale';
 import { useCompany } from '@/contexts/CompanyContext';
 import { AddCommissionDialog } from '@/components/commissions/AddCommissionDialog';
 import { formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const COMMISSIONS_PER_PAGE = 20;
 
 interface Commission {
   id: string;
@@ -188,6 +192,13 @@ export default function CommissionsPage() {
     0
   );
 
+  const pagination = usePagination({
+    totalItems: filteredCommissions.length,
+    pageSize: COMMISSIONS_PER_PAGE,
+  });
+
+  const paginatedCommissions = filteredCommissions.slice(pagination.startIndex, pagination.endIndex);
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -324,14 +335,14 @@ export default function CommissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCommissions.length === 0 ? (
+                {paginatedCommissions.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Aucune commission pour cette période
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCommissions.map((commission) => (
+                  paginatedCommissions.map((commission) => (
                     <TableRow key={commission.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -389,6 +400,11 @@ export default function CommissionsPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.goToPage}
+            />
           </CardContent>
         </Card>
       </div>

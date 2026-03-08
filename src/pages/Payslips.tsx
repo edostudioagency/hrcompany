@@ -46,6 +46,10 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { sortEmployees, formatEmployeeName, getEmployeeInitials } from '@/lib/utils';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAYSLIPS_PER_PAGE = 20;
 
 type SupabaseError = { message: string; statusCode?: string };
 
@@ -320,6 +324,13 @@ export default function PayslipsPage() {
     return matchesSearch && matchesMonth && matchesYear;
   });
 
+  const pagination = usePagination({
+    totalItems: filteredPayslips.length,
+    pageSize: PAYSLIPS_PER_PAGE,
+  });
+
+  const paginatedPayslips = filteredPayslips.slice(pagination.startIndex, pagination.endIndex);
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -464,14 +475,14 @@ export default function PayslipsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayslips.length === 0 ? (
+                {paginatedPayslips.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       Aucune fiche de paie trouvée
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPayslips.map((payslip) => (
+                  paginatedPayslips.map((payslip) => (
                     <TableRow key={payslip.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -549,6 +560,11 @@ export default function PayslipsPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.goToPage}
+            />
           </CardContent>
         </Card>
       </div>
